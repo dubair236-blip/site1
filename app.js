@@ -1,371 +1,479 @@
-// Инициализация Telegram WebApp
-const tg = window.Telegram.WebApp;
-// === НАСТРОЙКИ ===
+// === КОНФИГУРАЦИЯ ===
 const API_URL = 'http://de1.bot-hosting.net:21117';
-// Расширяем на весь экран
+
+// Telegram WebApp
+const tg = window.Telegram.WebApp;
 tg.expand();
+tg.ready();
 
 // Данные пользователя
 let currentUser = {
-    id: null,
-    username: 'Гость',
-    first_name: 'Игрок'
+    id: tg.initDataUnsafe?.user?.id || 1,
+    username: tg.initDataUnsafe?.user?.username || 'Игрок',
+    first_name: tg.initDataUnsafe?.user?.first_name || 'Игрок'
 };
 
 let currentBalance = 0;
-let currentTab = 'games';
 
-// Загрузка приложения
+// === ЗАГРУЗКА ===
 window.addEventListener('load', async () => {
-    try {
-        // Инициализируем Telegram
-        tg.ready();
-        
-        // Получаем данные пользователя
-        const initData = tg.initDataUnsafe;
-        
-        if (initData && initData.user) {
-            currentUser.id = initData.user.id;
-            currentUser.username = initData.user.username || 'Игрок';
-            currentUser.first_name = initData.user.first_name || 'Игрок';
-        }
-        
-        // Загружаем баланс с сервера
-        await loadUserData();
-        
-        // Показываем интерфейс после загрузки
-        setTimeout(() => {
-            document.getElementById('loading-screen').style.display = 'none';
-            document.getElementById('main-menu').style.display = 'block';
-            updateUserInfo();
-            showTab('games');
-        }, 2000);
-        
-    } catch (error) {
-        console.error('Ошибка загрузки:', error);
-        document.getElementById('loading-screen').innerHTML = 
-            '<p style="color: white;">Ошибка загрузки. Попробуйте позже.</p>';
-    }
+    await loadUserData();
+    
+    setTimeout(() => {
+        document.getElementById('loading-screen').style.display = 'none';
+        document.getElementById('main-menu').style.display = 'block';
+        updateUserInfo();
+        showTab('games');
+    }, 2000);
 });
 
-// Загрузка данных пользователя с бота
-async function loadUserData() {
+// === API ===
+async function apiRequest(endpoint, method = 'GET', body = null) {
     try {
-        // Отправляем данные на сервер бота
-        const response = await fetch('/api/user', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                userId: currentUser.id,
-                username: currentUser.username,
-                firstName: currentUser.first_name
-            })
-        });
+        const options = {
+            method,
+            headers: { 'Content-Type': 'application/json' }
+        };
+        if (body) options.body = JSON.stringify(body);
         
-        if (response.ok) {
-            const data = await response.json();
-            currentBalance = data.balance || 0;
-        }
+        const response = await fetch(API_URL + endpoint, options);
+        return await response.json();
     } catch (error) {
-        console.log('Используем локальные данные');
+        console.log('API Error:', error);
+        return null;
+    }
+}
+
+async function loadUserData() {
+    const data = await apiRequest('/api/user', 'POST', {
+        userId: currentUser.id,
+        username: currentUser.username,
+        firstName: currentUser.first_name
+    });
+    
+    if (data) {
+        currentBalance = data.balance || 0;
+    } else {
         currentBalance = 100; // Тестовый баланс
     }
 }
 
-// Обновление информации о пользователе
 function updateUserInfo() {
     document.getElementById('username').textContent = currentUser.first_name;
     document.getElementById('balance').textContent = `⭐ ${currentBalance}`;
 }
 
-// Переключение вкладок
+// === НАВИГАЦИЯ ===
 function showTab(tab) {
-    currentTab = tab;
-    
-    // Обновляем кнопки
-    document.querySelectorAll('.nav-btn').forEach(btn => {
-        btn.classList.remove('active');
-    });
+    document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
     event.target.closest('.nav-btn').classList.add('active');
     
-    // Загружаем контент
     switch(tab) {
-        case 'games':
-            loadGamesTab();
-            break;
-        case 'leaderboard':
-            loadLeaderboardTab();
-            break;
-        case 'instructions':
-            loadInstructionsTab();
-            break;
-        case 'profile':
-            loadProfileTab();
-            break;
+        case 'games': loadGamesTab(); break;
+        case 'leaderboard': loadLeaderboardTab(); break;
+        case 'instructions': loadInstructionsTab(); break;
+        case 'profile': loadProfileTab(); break;
     }
 }
 
-// Вкладка Игры
+// === ВКЛАДКА ИГРЫ ===
 function loadGamesTab() {
-    const content = document.getElementById('content-area');
-    content.innerHTML = `
-        <h2 style="margin-bottom: 20px;">🎮 Доступные игры</h2>
+    document.getElementById('content-area').innerHTML = `
+        <h2 style="margin-bottom:20px;">🎮 Игры</h2>
         <div class="games-grid">
-            <div class="game-card" onclick="loadTicTacToe()">
+            <div class="game-card" onclick="startTicTacToe()">
                 <span class="game-emoji">❌⭕</span>
                 <h3>Крестики-Нолики</h3>
-                <p class="game-desc">Классическая игра против друзей или бота</p>
-                <span class="badge online">Онлайн</span>
+                <p class="game-desc">Играйте против бота!</p>
+                <span class="badge offline">Оффлайн</span>
             </div>
-            
-            <div class="game-card" onclick="loadDice()">
+            <div class="game-card" onclick="startDice()">
                 <span class="game-emoji">🎲</span>
                 <h3>Кубик</h3>
-                <p class="game-desc">Брось 3 кубика и победи соперника</p>
-                <span class="badge online">Онлайн</span>
+                <p class="game-desc">Брось кубики против бота!</p>
+                <span class="badge offline">Оффлайн</span>
             </div>
-            
-            <div class="game-card" onclick="loadCups()">
+            <div class="game-card" onclick="startCups()">
                 <span class="game-emoji">🥤</span>
                 <h3>Найди шарик</h3>
-                <p class="game-desc">Угадай под каким стаканом шарик и получи x1.5</p>
+                <p class="game-desc">Угадай и получи x1.5!</p>
                 <span class="badge offline">Оффлайн</span>
             </div>
         </div>
     `;
 }
 
-// Вкладка Рейтинг
-async function loadLeaderboardTab() {
-    const content = document.getElementById('content-area');
+// === КРЕСТИКИ-НОЛИКИ ===
+let tttBoard = [];
+let tttPlayer = 'X';
+let tttBot = 'O';
+let tttGameOver = false;
+let tttBet = 0;
+
+function startTicTacToe() {
+    const bet = prompt('Введите ставку (звёзды):');
+    if (!bet || isNaN(bet) || parseInt(bet) < 1) {
+        alert('Введите корректную ставку!');
+        return;
+    }
     
-    try {
-        const response = await fetch('/api/leaderboard');
-        const leaderboard = await response.json();
+    tttBet = parseInt(bet);
+    
+    if (tttBet > currentBalance) {
+        alert('Недостаточно звёзд!');
+        return;
+    }
+    
+    tttBoard = ['', '', '', '', '', '', '', '', ''];
+    tttGameOver = false;
+    
+    renderTicTacToe();
+}
+
+function renderTicTacToe() {
+    document.getElementById('content-area').innerHTML = `
+        <h2>❌⭕ Крестики-Нолики</h2>
+        <p style="text-align:center;margin:10px 0;">Ставка: ${tttBet}⭐ | Вы: ❌ Бот: ⭕</p>
+        <div class="game-board">
+            ${tttBoard.map((cell, i) => `
+                <div class="cell ${cell}" onclick="${!tttGameOver && cell === '' ? `tttMove(${i})` : ''}">
+                    ${cell === 'X' ? '❌' : cell === 'O' ? '⭕' : ''}
+                </div>
+            `).join('')}
+        </div>
+        ${tttGameOver ? '<button class="btn" onclick="loadGamesTab()" style="width:100%;margin-top:20px;">Назад к играм</button>' : ''}
+    `;
+}
+
+function tttMove(index) {
+    if (tttBoard[index] !== '' || tttGameOver) return;
+    
+    tttBoard[index] = 'X';
+    renderTicTacToe();
+    
+    if (checkTTTWin('X')) {
+        tttGameOver = true;
+        currentBalance += tttBet;
+        updateUserInfo();
+        alert('🎉 Вы выиграли ' + (tttBet) + '⭐!');
+        updateBalanceDB(tttBet);
+        renderTicTacToe();
+        return;
+    }
+    
+    if (tttBoard.every(cell => cell !== '')) {
+        tttGameOver = true;
+        alert('Ничья!');
+        renderTicTacToe();
+        return;
+    }
+    
+    // Ход бота
+    setTimeout(() => {
+        tttBotMove();
+        renderTicTacToe();
         
-        if (leaderboard.length === 0) {
-            content.innerHTML = '<p style="text-align: center; padding: 50px; opacity: 0.6;">Пока нет данных 😔</p>';
+        if (checkTTTWin('O')) {
+            tttGameOver = true;
+            currentBalance -= tttBet;
+            updateUserInfo();
+            alert('😢 Бот выиграл!');
+            updateBalanceDB(-tttBet);
+            renderTicTacToe();
             return;
         }
         
-        content.innerHTML = `
-            <h2 style="margin-bottom: 20px;">🏆 Топ игроков</h2>
-            ${leaderboard.map((player, index) => `
-                <div class="leaderboard-item fade-in" style="animation-delay: ${index * 0.1}s">
-                    <div class="rank">${index + 1}</div>
-                    <div class="avatar">👤</div>
-                    <div style="flex: 1;">
-                        <div style="font-weight: bold;">${player.username || 'Игрок'}</div>
-                        <div style="font-size: 12px; color: rgba(255,255,255,0.6);">
-                            Выиграно игр: ${player.wins || 0}
-                        </div>
-                    </div>
-                    <div style="color: #4CAF50; font-weight: bold;">
-                        +${player.profit || 0}⭐
-                    </div>
-                </div>
-            `).join('')}
-        `;
-    } catch (error) {
-        content.innerHTML = `
-            <h2 style="margin-bottom: 20px;">🏆 Топ игроков</h2>
-            <p style="text-align: center; opacity: 0.6;">Рейтинг временно недоступен</p>
-        `;
-    }
+        if (tttBoard.every(cell => cell !== '')) {
+            tttGameOver = true;
+            alert('Ничья!');
+            renderTicTacToe();
+        }
+    }, 500);
 }
 
-// Вкладка Инструкция
-function loadInstructionsTab() {
-    const content = document.getElementById('content-area');
-    content.innerHTML = `
-        <h2 style="margin-bottom: 20px;">📖 Инструкция</h2>
+function tttBotMove() {
+    // Бот играет умно
+    const emptyCells = tttBoard.map((cell, i) => cell === '' ? i : null).filter(i => i !== null);
+    
+    // Проверка победы бота
+    for (const i of emptyCells) {
+        tttBoard[i] = 'O';
+        if (checkTTTWin('O')) return;
+        tttBoard[i] = '';
+    }
+    
+    // Блокировка игрока
+    for (const i of emptyCells) {
+        tttBoard[i] = 'X';
+        if (checkTTTWin('X')) {
+            tttBoard[i] = 'O';
+            return;
+        }
+        tttBoard[i] = '';
+    }
+    
+    // Центр
+    if (tttBoard[4] === '') {
+        tttBoard[4] = 'O';
+        return;
+    }
+    
+    // Случайная клетка
+    const randomIndex = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+    tttBoard[randomIndex] = 'O';
+}
+
+function checkTTTWin(player) {
+    const wins = [
+        [0,1,2], [3,4,5], [6,7,8],
+        [0,3,6], [1,4,7], [2,5,8],
+        [0,4,8], [2,4,6]
+    ];
+    return wins.some(w => w.every(i => tttBoard[i] === player));
+}
+
+// === КУБИК ===
+function startDice() {
+    const bet = prompt('Введите ставку (звёзды):');
+    if (!bet || isNaN(bet) || parseInt(bet) < 1) {
+        alert('Введите корректную ставку!');
+        return;
+    }
+    
+    const betAmount = parseInt(bet);
+    
+    if (betAmount > currentBalance) {
+        alert('Недостаточно звёзд!');
+        return;
+    }
+    
+    // Бросок игрока
+    const myDice = [
+        Math.floor(Math.random() * 6) + 1,
+        Math.floor(Math.random() * 6) + 1,
+        Math.floor(Math.random() * 6) + 1
+    ];
+    const mySum = myDice.reduce((a,b) => a+b, 0);
+    
+    // Бросок бота
+    const botDice = [
+        Math.floor(Math.random() * 6) + 1,
+        Math.floor(Math.random() * 6) + 1,
+        Math.floor(Math.random() * 6) + 1
+    ];
+    const botSum = botDice.reduce((a,b) => a+b, 0);
+    
+    let result = '';
+    if (mySum > botSum) {
+        result = '🎉 Вы выиграли!';
+        currentBalance += betAmount;
+    } else if (mySum < botSum) {
+        result = '😢 Бот выиграл!';
+        currentBalance -= betAmount;
+    } else {
+        result = '🤝 Ничья!';
+    }
+    
+    updateUserInfo();
+    
+    document.getElementById('content-area').innerHTML = `
+        <h2>🎲 Кубик</h2>
+        <p style="text-align:center;">Ставка: ${betAmount}⭐</p>
         
-        <div class="fade-in">
-            <h3 style="color: #f093fb;">❌⭕ Крестики-Нолики</h3>
-            <p style="margin: 10px 0; line-height: 1.6;">
-                Классическая игра на поле 3x3. Игроки по очереди ставят крестики и нолики.
-                Победитель забирает всю ставку. При ничьей ставка возвращается.
-            </p>
+        <div style="text-align:center;margin:20px 0;">
+            <h3>Ваши кубики:</h3>
+            <div class="dice-container">
+                ${myDice.map(d => `<span class="dice">${['','⚀','⚁','⚂','⚃','⚄','⚅'][d]}</span>`).join('')}
+            </div>
+            <p>Сумма: ${mySum}</p>
+        </div>
+        
+        <div style="text-align:center;margin:20px 0;">
+            <h3>Кубики бота:</h3>
+            <div class="dice-container">
+                ${botDice.map(d => `<span class="dice">${['','⚀','⚁','⚂','⚃','⚄','⚅'][d]}</span>`).join('')}
+            </div>
+            <p>Сумма: ${botSum}</p>
+        </div>
+        
+        <h2 style="text-align:center;color:${mySum > botSum ? '#4CAF50' : '#f44336'}">${result}</h2>
+        
+        <button class="btn" onclick="startDice()" style="width:100%;margin-top:20px;">🎲 Играть ещё</button>
+        <button class="btn" onclick="loadGamesTab()" style="width:100%;margin-top:10px;background:gray;">Назад</button>
+    `;
+}
+
+// === СТАКАНЫ ===
+let cupsGame = {
+    ballPosition: 0,
+    shuffled: false,
+    chosen: false,
+    bet: 0
+};
+
+function startCups() {
+    const bet = prompt('Введите ставку (звёзды):');
+    if (!bet || isNaN(bet) || parseInt(bet) < 1) {
+        alert('Введите корректную ставку!');
+        return;
+    }
+    
+    cupsGame.bet = parseInt(bet);
+    
+    if (cupsGame.bet > currentBalance) {
+        alert('Недостаточно звёзд!');
+        return;
+    }
+    
+    cupsGame.ballPosition = Math.floor(Math.random() * 3);
+    cupsGame.shuffled = false;
+    cupsGame.chosen = false;
+    
+    renderCups('shuffling');
+    
+    // Анимация перемешивания
+    setTimeout(() => {
+        cupsGame.shuffled = true;
+        renderCups('choose');
+    }, 2000);
+}
+
+function renderCups(phase) {
+    const cupEmojis = ['🥤', '🥤', '🥤'];
+    
+    if (phase === 'result') {
+        cupEmojis[cupsGame.ballPosition] = '🏆';
+    }
+    
+    document.getElementById('content-area').innerHTML = `
+        <h2>🥤 Найди шарик</h2>
+        <p style="text-align:center;">Ставка: ${cupsGame.bet}⭐ | Выигрыш: ${Math.floor(cupsGame.bet * 1.5)}⭐</p>
+        
+        ${phase === 'shuffling' ? '<p style="text-align:center;color:#ffd700;">🔄 Перемешиваем...</p>' : ''}
+        ${phase === 'choose' ? '<p style="text-align:center;color:#4CAF50;">👉 Выберите стакан!</p>' : ''}
+        
+        <div class="cups-container">
+            ${cupEmojis.map((cup, i) => `
+                <div class="cup ${phase === 'shuffling' ? 'shuffling' : ''}" 
+                     onclick="${phase === 'choose' ? `chooseCup(${i})` : ''}"
+                     style="font-size:80px;cursor:${phase === 'choose' ? 'pointer' : 'default'};">
+                    ${cup}
+                </div>
+            `).join('')}
+        </div>
+        
+        ${phase === 'result' ? `<button class="btn" onclick="startCups()" style="width:100%;margin-top:20px;">Играть ещё</button>` : ''}
+        <button class="btn" onclick="loadGamesTab()" style="width:100%;margin-top:10px;background:gray;">Назад</button>
+    `;
+}
+
+function chooseCup(index) {
+    if (!cupsGame.shuffled || cupsGame.chosen) return;
+    
+    cupsGame.chosen = true;
+    const won = index === cupsGame.ballPosition;
+    
+    if (won) {
+        const winnings = Math.floor(cupsGame.bet * 1.5);
+        currentBalance += winnings;
+        alert('🎉 Вы выиграли ' + winnings + '⭐!');
+    } else {
+        currentBalance -= cupsGame.bet;
+        alert('😢 Не угадали! Шарик был в стакане #' + (cupsGame.ballPosition + 1));
+    }
+    
+    updateUserInfo();
+    renderCups('result');
+}
+
+// === РЕЙТИНГ ===
+async function loadLeaderboardTab() {
+    const content = document.getElementById('content-area');
+    content.innerHTML = '<h2>🏆 Рейтинг</h2><p style="text-align:center;padding:50px;">Загрузка...</p>';
+    
+    const data = await apiRequest('/api/leaderboard');
+    
+    if (!data || data.length === 0) {
+        content.innerHTML = '<h2>🏆 Рейтинг</h2><p style="text-align:center;padding:50px;">Пока нет данных</p>';
+        return;
+    }
+    
+    content.innerHTML = `
+        <h2>🏆 Топ игроков</h2>
+        ${data.map((p, i) => `
+            <div class="leaderboard-item">
+                <div class="rank">${i+1}</div>
+                <div class="avatar">👤</div>
+                <div style="flex:1">
+                    <div style="font-weight:bold">${p.username}</div>
+                    <div style="font-size:12px;opacity:0.6">Побед: ${p.wins}</div>
+                </div>
+                <div style="color:#4CAF50;font-weight:bold">+${p.profit}⭐</div>
+            </div>
+        `).join('')}
+    `;
+}
+
+// === ИНСТРУКЦИЯ ===
+function loadInstructionsTab() {
+    document.getElementById('content-area').innerHTML = `
+        <h2>📖 Инструкция</h2>
+        <div style="line-height:1.8;">
+            <h3>❌⭕ Крестики-Нолики</h3>
+            <p>Играйте против бота. Победитель забирает ставку!</p>
             
-            <h3 style="color: #f093fb; margin-top: 20px;">🎲 Кубик</h3>
-            <p style="margin: 10px 0; line-height: 1.6;">
-                Каждый игрок бросает по 3 кубика. У кого сумма выпавших чисел больше - 
-                тот побеждает и забирает банк. При равной сумме - ничья.
-            </p>
+            <h3>🎲 Кубик</h3>
+            <p>Вы и бот бросаете по 3 кубика. У кого сумма больше - победил!</p>
             
-            <h3 style="color: #f093fb; margin-top: 20px;">🥤 Найди шарик</h3>
-            <p style="margin: 10px 0; line-height: 1.6;">
-                Под одним из трёх стаканов спрятан шарик. Стаканы быстро перемешиваются.
-                Если угадаешь где шарик - получаешь x1.5 от своей ставки!
-            </p>
-            
-            <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 15px; margin-top: 20px;">
-                <h4 style="color: #ffd700;">💰 Правила ставок:</h4>
-                <ul style="list-style: none; padding: 0; margin-top: 10px;">
-                    <li style="margin: 8px 0;">✅ Минимальная ставка: 1⭐</li>
-                    <li style="margin: 8px 0;">✅ Максимальная ставка: 10000⭐</li>
-                    <li style="margin: 8px 0;">✅ Комиссия бота: 5%</li>
-                    <li style="margin: 8px 0;">🤖 При игре с ботом - бот играет оптимально</li>
-                </ul>
+            <h3>🥤 Найди шарик</h3>
+            <p>Угадайте под каким стаканом шарик и получите x1.5 от ставки!</p>
+        </div>
+    `;
+}
+
+// === ПРОФИЛЬ ===
+async function loadProfileTab() {
+    const content = document.getElementById('content-area');
+    content.innerHTML = '<h2>👤 Профиль</h2><p style="text-align:center;">Загрузка...</p>';
+    
+    const stats = await apiRequest('/api/stats/' + currentUser.id);
+    
+    if (!stats) {
+        content.innerHTML = '<h2>👤 Профиль</h2><p style="text-align:center;">Недоступно</p>';
+        return;
+    }
+    
+    content.innerHTML = `
+        <div class="profile-header">
+            <div class="profile-avatar">👤</div>
+            <h2>${currentUser.first_name}</h2>
+            <p>@${currentUser.username}</p>
+        </div>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value">${stats.totalGames}</div>
+                <div class="stat-label">Всего игр</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">${stats.totalBet}⭐</div>
+                <div class="stat-label">Поставлено</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" style="color:#4CAF50">${stats.wins}</div>
+                <div class="stat-label">Побед</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" style="color:#f44336">${stats.losses}</div>
+                <div class="stat-label">Поражений</div>
             </div>
         </div>
     `;
 }
 
-// Вкладка Профиль
-async function loadProfileTab() {
-    const content = document.getElementById('content-area');
-    
-    try {
-        const response = await fetch(`/api/stats/${currentUser.id}`);
-        const stats = await response.json();
-        
-        content.innerHTML = `
-            <div class="profile-header">
-                <div class="profile-avatar">👤</div>
-                <h2>${currentUser.first_name}</h2>
-                <p style="color: rgba(255,255,255,0.6);">@${currentUser.username}</p>
-            </div>
-            
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-value">${stats.totalGames || 0}</div>
-                    <div class="stat-label">Всего игр</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">${stats.totalBet || 0}⭐</div>
-                    <div class="stat-label">Поставлено</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" style="background: linear-gradient(45deg, #4CAF50, #8BC34A); -webkit-background-clip: text;">
-                        ${stats.wins || 0}
-                    </div>
-                    <div class="stat-label">Побед</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" style="background: linear-gradient(45deg, #f44336, #ff5722); -webkit-background-clip: text;">
-                        ${stats.losses || 0}
-                    </div>
-                    <div class="stat-label">Поражений</div>
-                </div>
-            </div>
-            
-            <h3 style="margin: 20px 0;">📊 Статистика по играм:</h3>
-            
-            <div class="stat-card" onclick="showGameStats('tictactoe')" style="cursor: pointer; margin: 10px 0; display: flex; align-items: center; gap: 10px;">
-                <span style="font-size: 30px;">❌</span>
-                <div>
-                    <div style="font-weight: bold;">Крестики-Нолики</div>
-                    <div style="font-size: 12px; color: rgba(255,255,255,0.6);">Сыграно: ${stats.tictactoe || 0} игр</div>
-                </div>
-            </div>
-            
-            <div class="stat-card" onclick="showGameStats('dice')" style="cursor: pointer; margin: 10px 0; display: flex; align-items: center; gap: 10px;">
-                <span style="font-size: 30px;">🎲</span>
-                <div>
-                    <div style="font-weight: bold;">Кубик</div>
-                    <div style="font-size: 12px; color: rgba(255,255,255,0.6);">Сыграно: ${stats.dice || 0} игр</div>
-                </div>
-            </div>
-            
-            <div class="stat-card" onclick="showGameStats('cups')" style="cursor: pointer; margin: 10px 0; display: flex; align-items: center; gap: 10px;">
-                <span style="font-size: 30px;">🥤</span>
-                <div>
-                    <div style="font-weight: bold;">Найди шарик</div>
-                    <div style="font-size: 12px; color: rgba(255,255,255,0.6);">Сыграно: ${stats.cups || 0} игр</div>
-                </div>
-            </div>
-        `;
-    } catch (error) {
-        content.innerHTML = `
-            <div class="profile-header">
-                <div class="profile-avatar">👤</div>
-                <h2>${currentUser.first_name}</h2>
-            </div>
-            <p style="text-align: center; opacity: 0.6;">Статистика временно недоступна</p>
-        `;
-    }
-}
-
-// Показать детальную статистику по игре
-async function showGameStats(gameType) {
-    const gameNames = {
-        'tictactoe': 'Крестики-Нолики',
-        'dice': 'Кубик',
-        'cups': 'Найди шарик'
-    };
-    
-    try {
-        const response = await fetch(`/api/stats/${currentUser.id}/${gameType}`);
-        const stats = await response.json();
-        
-        showModal(`
-            <h3>📊 ${gameNames[gameType]}</h3>
-            <div class="stats-grid" style="margin-top: 20px;">
-                <div class="stat-card">
-                    <div class="stat-value">${stats.gamesPlayed || 0}</div>
-                    <div class="stat-label">Сыграно</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">${stats.gamesWon || 0}</div>
-                    <div class="stat-label">Побед</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">${stats.gamesLost || 0}</div>
-                    <div class="stat-label">Поражений</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">${stats.totalBet || 0}⭐</div>
-                    <div class="stat-label">Поставлено</div>
-                </div>
-            </div>
-            <div style="margin-top: 15px; text-align: center;">
-                <p>💰 Всего выиграно: <span style="color: #4CAF50; font-weight: bold;">${stats.totalWon || 0}⭐</span></p>
-            </div>
-        `);
-    } catch (error) {
-        console.error('Ошибка загрузки статистики:', error);
-    }
-}
-
-// Модальное окно
-function showModal(content) {
-    const modal = document.getElementById('modal');
-    const modalBody = document.getElementById('modal-body');
-    modalBody.innerHTML = content;
-    modal.style.display = 'flex';
-}
-
-function closeModal() {
-    document.getElementById('modal').style.display = 'none';
-}
-
-// Закрытие модального окна при клике вне его
-window.onclick = function(event) {
-    const modal = document.getElementById('modal');
-    if (event.target === modal) {
-        closeModal();
-    }
-}
-
-// Функция для форматирования чисел
-function formatNumber(num) {
-    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
-    if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
-    return num.toString();
-}
-
-// Обновление баланса (для тестирования)
-function updateBalance(amount) {
-    currentBalance += amount;
-    updateUserInfo();
-    // Отправляем на сервер
-    fetch('/api/updateBalance', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-            userId: currentUser.id, 
-            amount: amount 
-        })
-    }).catch(console.error);
+// Обновление баланса в БД
+async function updateBalanceDB(amount) {
+    await apiRequest('/api/updateBalance', 'POST', {
+        userId: currentUser.id,
+        amount: amount
+    });
 }
