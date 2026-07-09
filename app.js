@@ -355,4 +355,16 @@ function formatNumber(num) {
 }
 
 // Обновление баланса (для тестирования)
-function updateBalance(
+function updateBalance(amount) {
+    currentBalance += amount;
+    updateUserInfo();
+    // Отправляем на сервер
+    fetch('/api/updateBalance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            userId: currentUser.id, 
+            amount: amount 
+        })
+    }).catch(console.error);
+}
