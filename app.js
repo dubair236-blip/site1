@@ -1,6 +1,7 @@
 // Инициализация Telegram WebApp
 const tg = window.Telegram.WebApp;
-
+// === НАСТРОЙКИ ===
+const API_URL = 'http://de1.bot-hosting.net:21117';
 // Расширяем на весь экран
 tg.expand();
 
