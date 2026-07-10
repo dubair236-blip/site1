@@ -1,0 +1,1442 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>XalyavaStars — Игры</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ============ TOKENS ============ */
+:root{
+  --bg-0:#07050d;
+  --bg-1:#0d0918;
+  --bg-2:#140f24;
+  --glass:rgba(255,255,255,0.045);
+  --glass-strong:rgba(255,255,255,0.075);
+  --border:rgba(255,255,255,0.09);
+  --border-soft:rgba(255,255,255,0.05);
+  --purple:#9b5cff;
+  --purple-2:#7a3bf0;
+  --pink:#ff4fd8;
+  --gold:#ffd166;
+  --gold-2:#c9932e;
+  --text-0:#f6f3ff;
+  --text-1:#b3a9d6;
+  --text-2:#726a94;
+  --ok:#4ade80;
+  --bad:#ff5c7a;
+  --radius-l:24px;
+  --radius-m:16px;
+  --radius-s:10px;
+  --font-d:'Orbitron',sans-serif;
+  --font-b:'Manrope',sans-serif;
+  --grad-main:linear-gradient(135deg,var(--purple) 0%,var(--pink) 100%);
+  --grad-gold:linear-gradient(135deg,#ffe29a 0%,var(--gold) 45%,var(--gold-2) 100%);
+  --safe-top:env(safe-area-inset-top,0px);
+  --safe-bottom:env(safe-area-inset-bottom,0px);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overscroll-behavior:none;}
+body{
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(155,92,255,0.25), transparent 60%),
+    radial-gradient(ellipse 60% 40% at 90% 10%, rgba(255,79,216,0.12), transparent 60%),
+    var(--bg-0);
+  color:var(--text-0);
+  font-family:var(--font-b);
+  min-height:100vh;
+  overflow-x:hidden;
+}
+@media (prefers-reduced-motion: reduce){
+  *{animation-duration:0.01ms !important; transition-duration:0.01ms !important;}
+}
+button{font-family:inherit;border:none;background:none;color:inherit;cursor:pointer;}
+input{font-family:inherit;color:inherit;}
+::selection{background:var(--purple);color:#fff;}
+
+/* ============ LAYOUT ============ */
+#app{max-width:520px;margin:0 auto;min-height:100vh;position:relative;padding-bottom:calc(84px + var(--safe-bottom));}
+
+/* header */
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:calc(16px + var(--safe-top)) 18px 14px;
+  position:sticky;top:0;z-index:30;
+  backdrop-filter:blur(18px);
+  background:linear-gradient(180deg, rgba(7,5,13,0.92), rgba(7,5,13,0.55));
+  border-bottom:1px solid var(--border-soft);
+}
+.user-chip{display:flex;align-items:center;gap:11px;}
+.avatar{
+  width:42px;height:42px;border-radius:50%;
+  background:var(--grad-main);
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-d);font-weight:700;font-size:16px;color:#fff;
+  box-shadow:0 0 0 2px rgba(255,255,255,0.08), 0 0 18px rgba(155,92,255,0.55);
+  overflow:hidden;flex-shrink:0;
+}
+.avatar img{width:100%;height:100%;object-fit:cover;}
+.user-meta .u-name{font-weight:700;font-size:14.5px;letter-spacing:.2px;}
+.user-meta .u-sub{font-size:11.5px;color:var(--text-2);margin-top:1px;letter-spacing:.3px;}
+.balance-pill{
+  display:flex;align-items:center;gap:7px;
+  padding:9px 14px 9px 10px;
+  border-radius:100px;
+  background:var(--glass);
+  border:1px solid var(--border);
+  position:relative;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.06);
+}
+.balance-pill .star-ic{width:19px;height:19px;filter:drop-shadow(0 0 6px rgba(255,209,102,0.9));}
+.balance-pill .bal-num{font-family:var(--font-d);font-weight:700;font-size:15px;color:var(--gold);letter-spacing:.3px;}
+
+/* screens */
+.screen{padding:18px 16px 10px;animation:screenIn .38s cubic-bezier(.2,.8,.2,1);}
+.screen[hidden]{display:none;}
+@keyframes screenIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+
+.section-title{
+  font-family:var(--font-d);font-size:12px;letter-spacing:2.2px;text-transform:uppercase;
+  color:var(--text-2);margin:22px 4px 12px;font-weight:700;
+}
+.section-title:first-child{margin-top:4px;}
+
+/* glass card base */
+.glass-card{
+  background:var(--glass);
+  border:1px solid var(--border);
+  border-radius:var(--radius-l);
+  backdrop-filter:blur(14px);
+  position:relative;
+  overflow:hidden;
+}
+
+/* ============ GAME CARDS ============ */
+.game-grid{display:flex;flex-direction:column;gap:14px;}
+.game-card{
+  padding:18px;display:flex;align-items:center;gap:16px;
+  cursor:pointer;
+  transition:transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s;
+}
+.game-card:active{transform:scale(.97);}
+.game-card::before{
+  content:'';position:absolute;inset:0;
+  background:var(--grad-main);opacity:0;transition:opacity .3s;
+  z-index:0;
+}
+.game-card:hover::before{opacity:.06;}
+.game-card .g-icon{
+  width:58px;height:58px;border-radius:16px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(155deg, rgba(155,92,255,0.22), rgba(255,79,216,0.10));
+  border:1px solid rgba(255,255,255,0.09);
+  box-shadow:0 0 22px rgba(155,92,255,0.25), inset 0 1px 0 rgba(255,255,255,0.08);
+  position:relative;z-index:1;
+}
+.game-card .g-icon svg{width:30px;height:30px;}
+.game-card .g-info{flex:1;position:relative;z-index:1;}
+.game-card .g-name{font-family:var(--font-d);font-weight:700;font-size:15.5px;letter-spacing:.3px;}
+.game-card .g-desc{font-size:12px;color:var(--text-1);margin-top:4px;line-height:1.4;}
+.game-card .g-arrow{width:20px;height:20px;color:var(--text-2);flex-shrink:0;position:relative;z-index:1;transition:transform .25s;}
+.game-card:active .g-arrow{transform:translateX(3px);}
+.game-card.cx-ttt{box-shadow:0 8px 30px -12px rgba(155,92,255,0.35);}
+.game-card.cx-dice{box-shadow:0 8px 30px -12px rgba(255,79,216,0.3);}
+.game-card.cx-cups{box-shadow:0 8px 30px -12px rgba(255,209,102,0.25);}
+
+/* ============ TABBAR ============ */
+.tabbar{
+  position:fixed;left:50%;bottom:calc(14px + var(--safe-bottom));
+  transform:translateX(-50%);
+  width:calc(100% - 32px);max-width:488px;
+  display:flex;justify-content:space-around;align-items:center;
+  padding:9px 6px;border-radius:22px;
+  background:rgba(15,11,26,0.72);
+  border:1px solid var(--border);
+  backdrop-filter:blur(22px);
+  box-shadow:0 12px 40px -10px rgba(0,0,0,0.6);
+  z-index:50;
+}
+.tab-btn{
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  padding:8px 14px;border-radius:14px;position:relative;
+  color:var(--text-2);transition:color .25s;
+  flex:1;
+}
+.tab-btn svg{width:21px;height:21px;transition:transform .25s;}
+.tab-btn span{font-size:9.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;}
+.tab-btn.active{color:var(--text-0);}
+.tab-btn.active svg{transform:translateY(-1px);filter:drop-shadow(0 0 8px rgba(155,92,255,0.9));}
+.tab-btn.active::before{
+  content:'';position:absolute;top:-1px;left:50%;transform:translateX(-50%);
+  width:26px;height:2px;border-radius:2px;background:var(--grad-main);
+  box-shadow:0 0 10px rgba(155,92,255,0.9);
+}
+
+/* ============ LEADERBOARD ============ */
+.podium{display:flex;align-items:flex-end;gap:10px;padding:10px 4px 6px;}
+.podium-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;}
+.podium-item .p-avatar{
+  width:52px;height:52px;border-radius:50%;
+  background:var(--grad-main);display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-d);font-weight:700;color:#fff;font-size:16px;
+  border:2px solid rgba(255,255,255,0.15);position:relative;
+}
+.podium-item.rank-1 .p-avatar{width:66px;height:66px;font-size:20px;border-color:var(--gold);box-shadow:0 0 26px rgba(255,209,102,0.65);}
+.podium-item.rank-2 .p-avatar{border-color:#c9d3e0;box-shadow:0 0 18px rgba(201,211,224,0.4);}
+.podium-item.rank-3 .p-avatar{border-color:#e0a468;box-shadow:0 0 18px rgba(224,164,104,0.4);}
+.p-avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
+.p-crown{position:absolute;top:-15px;left:50%;transform:translateX(-50%);width:22px;height:22px;color:var(--gold);filter:drop-shadow(0 0 6px rgba(255,209,102,0.9));}
+.p-name{font-size:12px;font-weight:700;max-width:80px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.p-profit{font-family:var(--font-d);font-size:12px;color:var(--gold);font-weight:700;}
+.p-bar{width:100%;border-radius:12px 12px 0 0;background:var(--glass);border:1px solid var(--border);border-bottom:none;display:flex;align-items:flex-start;justify-content:center;padding-top:6px;font-family:var(--font-d);font-weight:800;color:var(--text-1);font-size:13px;}
+.rank-1 .p-bar{height:64px;background:linear-gradient(180deg, rgba(255,209,102,0.16), var(--glass));color:var(--gold);}
+.rank-2 .p-bar{height:46px;}
+.rank-3 .p-bar{height:34px;}
+
+.lb-list{display:flex;flex-direction:column;gap:8px;margin-top:16px;}
+.lb-row{
+  display:flex;align-items:center;gap:12px;padding:11px 14px;
+  border-radius:14px;background:var(--glass);border:1px solid var(--border-soft);
+}
+.lb-rank{width:22px;text-align:center;font-family:var(--font-d);font-weight:700;color:var(--text-2);font-size:13px;}
+.lb-av{width:34px;height:34px;border-radius:50%;background:var(--grad-main);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0;overflow:hidden;}
+.lb-av img{width:100%;height:100%;object-fit:cover;}
+.lb-name{flex:1;font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.lb-wins{font-size:11px;color:var(--text-2);}
+.lb-profit{font-family:var(--font-d);font-weight:700;font-size:13px;color:var(--ok);}
+
+/* ============ GUIDE ============ */
+.guide-card{padding:18px;margin-bottom:14px;opacity:0;transform:translateY(14px);animation:guideIn .5s cubic-bezier(.2,.8,.2,1) forwards;}
+@keyframes guideIn{to{opacity:1;transform:translateY(0);}}
+.guide-head{display:flex;align-items:center;gap:12px;margin-bottom:10px;}
+.guide-head .g-icon{width:40px;height:40px;border-radius:12px;background:linear-gradient(155deg, rgba(155,92,255,0.22), rgba(255,79,216,0.1));border:1px solid var(--border);display:flex;align-items:center;justify-content:center;}
+.guide-head .g-icon svg{width:21px;height:21px;}
+.guide-head h3{font-family:var(--font-d);font-size:14.5px;font-weight:700;}
+.guide-card p{font-size:12.8px;color:var(--text-1);line-height:1.6;}
+.guide-card .g-tag{display:inline-block;margin-top:10px;padding:4px 10px;border-radius:8px;font-size:10.5px;font-weight:700;letter-spacing:.4px;}
+.tag-win{background:rgba(74,222,128,0.12);color:var(--ok);}
+
+/* ============ PROFILE ============ */
+.profile-head{display:flex;flex-direction:column;align-items:center;padding:22px 0 6px;}
+.profile-head .avatar{width:82px;height:82px;font-size:28px;box-shadow:0 0 0 3px rgba(255,255,255,0.08), 0 0 32px rgba(155,92,255,0.6);}
+.profile-head .p-name{font-family:var(--font-d);font-weight:700;font-size:18px;margin-top:12px;}
+.profile-head .p-id{font-size:11.5px;color:var(--text-2);margin-top:2px;}
+
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px;}
+.stat-card{padding:16px;text-align:center;}
+.stat-card .s-val{font-family:var(--font-d);font-weight:800;font-size:22px;background:var(--grad-main);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+.stat-card .s-val.gold{background:var(--grad-gold);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+.stat-card .s-lbl{font-size:10.5px;color:var(--text-2);text-transform:uppercase;letter-spacing:.6px;margin-top:6px;font-weight:700;}
+
+.breakdown-row{display:flex;align-items:center;gap:12px;padding:14px;border-radius:16px;background:var(--glass);border:1px solid var(--border-soft);margin-bottom:9px;}
+.breakdown-row .b-icon{width:36px;height:36px;border-radius:10px;background:rgba(155,92,255,0.14);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.breakdown-row .b-icon svg{width:18px;height:18px;}
+.breakdown-row .b-name{flex:1;font-size:13px;font-weight:700;}
+.breakdown-row .b-stats{text-align:right;}
+.breakdown-row .b-stats .b-line{font-size:11px;color:var(--text-2);}
+.breakdown-row .b-stats .b-line b{color:var(--text-0);font-weight:700;}
+
+/* ============ GAME OVERLAY ============ */
+.overlay{
+  position:fixed;inset:0;z-index:100;
+  background:linear-gradient(180deg, var(--bg-1), var(--bg-0) 60%);
+  display:flex;flex-direction:column;
+  transform:translateY(100%);transition:transform .38s cubic-bezier(.2,.9,.2,1);
+}
+.overlay.open{transform:translateY(0);}
+.ov-head{
+  display:flex;align-items:center;gap:14px;
+  padding:calc(16px + var(--safe-top)) 18px 14px;
+  border-bottom:1px solid var(--border-soft);
+  background:rgba(7,5,13,0.5);backdrop-filter:blur(10px);
+}
+.ov-back{width:38px;height:38px;border-radius:12px;background:var(--glass);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.ov-back svg{width:18px;height:18px;}
+.ov-title{font-family:var(--font-d);font-weight:700;font-size:15.5px;flex:1;}
+.ov-bal{display:flex;align-items:center;gap:6px;font-family:var(--font-d);font-weight:700;color:var(--gold);font-size:13.5px;}
+.ov-bal svg{width:15px;height:15px;}
+.ov-body{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;gap:24px;overflow-y:auto;}
+
+/* bet panel */
+.bet-panel{width:100%;max-width:340px;text-align:center;}
+.bet-panel .bp-label{font-size:11.5px;color:var(--text-2);text-transform:uppercase;letter-spacing:1.4px;font-weight:700;margin-bottom:14px;}
+.bet-input-wrap{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:20px;}
+.bet-step{width:44px;height:44px;border-radius:14px;background:var(--glass);border:1px solid var(--border);font-size:20px;font-weight:700;display:flex;align-items:center;justify-content:center;transition:transform .15s;}
+.bet-step:active{transform:scale(.9);}
+#betInput{
+  width:130px;text-align:center;background:transparent;border:none;outline:none;
+  font-family:var(--font-d);font-size:34px;font-weight:800;color:var(--gold);
+  text-shadow:0 0 22px rgba(255,209,102,0.5);
+}
+.bet-quick{display:flex;gap:8px;justify-content:center;margin-bottom:22px;flex-wrap:wrap;}
+.bet-quick button{padding:7px 14px;border-radius:100px;background:var(--glass);border:1px solid var(--border);font-size:12px;font-weight:700;color:var(--text-1);}
+.bet-quick button:active{background:var(--glass-strong);}
+.btn-primary{
+  width:100%;padding:16px;border-radius:16px;
+  background:var(--grad-main);
+  font-family:var(--font-d);font-weight:700;font-size:14.5px;letter-spacing:.5px;color:#fff;
+  box-shadow:0 10px 30px -8px rgba(155,92,255,0.6);
+  transition:transform .15s, box-shadow .15s;
+  text-transform:uppercase;
+}
+.btn-primary:active{transform:scale(.97);box-shadow:0 6px 18px -6px rgba(155,92,255,0.5);}
+.btn-primary:disabled{opacity:.4;pointer-events:none;}
+.btn-ghost{width:100%;padding:14px;border-radius:16px;background:var(--glass);border:1px solid var(--border);font-weight:700;font-size:13.5px;color:var(--text-1);margin-top:10px;}
+
+/* TTT board */
+.ttt-board{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:9px;
+  width:min(78vw,300px);aspect-ratio:1;
+}
+.ttt-cell{
+  border-radius:16px;background:var(--glass);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  position:relative;transition:background .2s;
+}
+.ttt-cell:active{background:var(--glass-strong);}
+.ttt-cell svg{width:56%;height:56%;opacity:0;transform:scale(.5);animation:markIn .32s cubic-bezier(.2,.9,.3,1.3) forwards;}
+@keyframes markIn{to{opacity:1;transform:scale(1);}}
+.ttt-cell.win{background:rgba(74,222,128,0.14);border-color:rgba(74,222,128,0.5);box-shadow:0 0 20px rgba(74,222,128,0.35);}
+.ttt-status{font-family:var(--font-d);font-size:13px;font-weight:700;color:var(--text-1);text-align:center;letter-spacing:.3px;min-height:20px;}
+
+/* Dice */
+.dice-arena{display:flex;flex-direction:column;gap:22px;width:100%;align-items:center;}
+.dice-side{display:flex;flex-direction:column;align-items:center;gap:10px;}
+.dice-side-label{font-size:11px;color:var(--text-2);text-transform:uppercase;letter-spacing:1.2px;font-weight:700;}
+.dice-row{display:flex;gap:12px;}
+.die{
+  width:52px;height:52px;border-radius:14px;
+  background:linear-gradient(155deg,#1c1530,#0f0a1c);
+  border:1px solid var(--border);
+  display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);
+  padding:9px;box-shadow:0 8px 20px -6px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06);
+  transform-style:preserve-3d;
+}
+.die.rolling{animation:diceRoll .6s cubic-bezier(.3,.6,.4,1) infinite;}
+@keyframes diceRoll{0%{transform:rotateX(0) rotateY(0);}100%{transform:rotateX(360deg) rotateY(300deg);}}
+.die .pip{width:7px;height:7px;border-radius:50%;background:var(--gold);box-shadow:0 0 6px rgba(255,209,102,0.9);align-self:center;justify-self:center;opacity:0;}
+.die .pip.on{opacity:1;}
+.die.player{border-color:rgba(155,92,255,0.4);}
+.die.bot .pip{background:var(--pink);box-shadow:0 0 6px rgba(255,79,216,0.9);}
+.dice-vs{font-family:var(--font-d);font-size:12px;color:var(--text-2);font-weight:700;}
+.dice-sum{font-family:var(--font-d);font-size:22px;font-weight:800;}
+
+/* Cups */
+.cups-arena{position:relative;width:min(80vw,320px);height:180px;display:flex;align-items:flex-end;justify-content:space-between;}
+.cup{
+  width:30%;height:110px;position:relative;cursor:pointer;
+  transition:transform .5s cubic-bezier(.3,.6,.3,1);
+}
+.cup svg{width:100%;height:100%;filter:drop-shadow(0 10px 14px rgba(0,0,0,0.5));}
+.cup.lifted{transform:translateY(-46px);}
+.cup .ball{
+  position:absolute;bottom:6px;left:50%;transform:translateX(-50%);
+  width:22px;height:22px;border-radius:50%;
+  background:var(--grad-gold);box-shadow:0 0 16px rgba(255,209,102,0.9);
+  opacity:0;transition:opacity .2s;
+}
+.cup.reveal .ball{opacity:1;}
+.cups-status{font-family:var(--font-d);font-size:13px;color:var(--text-1);text-align:center;font-weight:700;min-height:20px;}
+
+/* result burst */
+.result-panel{width:100%;max-width:320px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:14px;}
+.result-icon{width:84px;height:84px;border-radius:50%;display:flex;align-items:center;justify-content:center;position:relative;}
+.result-icon.win{background:radial-gradient(circle, rgba(74,222,128,0.25), transparent 70%);}
+.result-icon.lose{background:radial-gradient(circle, rgba(255,92,122,0.22), transparent 70%);}
+.result-icon.draw{background:radial-gradient(circle, rgba(155,92,255,0.22), transparent 70%);}
+.result-icon svg{width:46px;height:46px;}
+.result-icon.win svg{color:var(--ok);filter:drop-shadow(0 0 14px rgba(74,222,128,0.7));}
+.result-icon.lose svg{color:var(--bad);filter:drop-shadow(0 0 14px rgba(255,92,122,0.7));}
+.result-icon.draw svg{color:var(--purple);filter:drop-shadow(0 0 14px rgba(155,92,255,0.7));}
+.result-title{font-family:var(--font-d);font-weight:800;font-size:19px;}
+.result-sub{font-size:13px;color:var(--text-1);}
+.result-amount{font-family:var(--font-d);font-size:26px;font-weight:800;}
+.result-amount.pos{color:var(--ok);}
+.result-amount.neg{color:var(--bad);}
+
+/* ============ MODAL ============ */
+.modal-backdrop{
+  position:fixed;inset:0;z-index:200;background:rgba(3,2,7,0.72);backdrop-filter:blur(6px);
+  display:flex;align-items:center;justify-content:center;padding:24px;
+  opacity:0;pointer-events:none;transition:opacity .25s;
+}
+.modal-backdrop.open{opacity:1;pointer-events:auto;}
+.modal-box{
+  width:100%;max-width:340px;padding:28px 24px 24px;border-radius:24px;
+  background:linear-gradient(160deg, #1a1428, #0f0b1c);
+  border:1px solid var(--border);
+  box-shadow:0 30px 70px -20px rgba(0,0,0,0.7);
+  text-align:center;transform:scale(.9) translateY(10px);transition:transform .3s cubic-bezier(.2,.9,.2,1.1);
+}
+.modal-backdrop.open .modal-box{transform:scale(1) translateY(0);}
+.modal-icon{width:64px;height:64px;margin:0 auto 16px;border-radius:50%;background:rgba(255,92,122,0.14);display:flex;align-items:center;justify-content:center;}
+.modal-icon svg{width:32px;height:32px;color:var(--bad);}
+.modal-box h3{font-family:var(--font-d);font-size:17px;font-weight:700;margin-bottom:8px;}
+.modal-box p{font-size:13px;color:var(--text-1);line-height:1.55;margin-bottom:22px;}
+
+/* toast */
+.toast{
+  position:fixed;bottom:calc(96px + var(--safe-bottom));left:50%;transform:translateX(-50%) translateY(20px);
+  padding:12px 20px;border-radius:100px;background:var(--glass-strong);border:1px solid var(--border);
+  backdrop-filter:blur(14px);font-size:12.5px;font-weight:700;z-index:300;
+  opacity:0;transition:all .3s cubic-bezier(.2,.9,.2,1);pointer-events:none;
+  display:flex;align-items:center;gap:8px;white-space:nowrap;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* empty/loading */
+.spinner{width:26px;height:26px;border-radius:50%;border:2.5px solid var(--border);border-top-color:var(--purple);animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.center-pad{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:50px 0;color:var(--text-2);font-size:12.5px;}
+
+.hidden{display:none !important;}
+
+/* ============ PVP ROOM UI ============ */
+.mode-select{display:flex;flex-direction:column;gap:12px;width:100%;max-width:320px;}
+.mode-btn{
+  display:flex;align-items:center;gap:14px;padding:18px;border-radius:18px;
+  background:var(--glass);border:1px solid var(--border);text-align:left;
+  transition:transform .15s;
+}
+.mode-btn:active{transform:scale(.97);}
+.mode-btn .m-icon{width:42px;height:42px;border-radius:12px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(155deg, rgba(155,92,255,0.22), rgba(255,79,216,0.1));}
+.mode-btn .m-icon svg{width:22px;height:22px;}
+.mode-btn .m-title{font-family:var(--font-d);font-weight:700;font-size:14px;}
+.mode-btn .m-sub{font-size:11.5px;color:var(--text-2);margin-top:2px;}
+
+.room-code-box{
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  padding:22px;border-radius:20px;background:var(--glass);border:1px dashed var(--border);
+  width:100%;max-width:300px;
+}
+.room-code-box .rc-label{font-size:10.5px;color:var(--text-2);text-transform:uppercase;letter-spacing:1.4px;font-weight:700;}
+.room-code-box .rc-code{font-family:var(--font-d);font-size:30px;font-weight:800;letter-spacing:4px;color:var(--gold);text-shadow:0 0 20px rgba(255,209,102,0.5);}
+.room-actions{display:flex;gap:10px;width:100%;max-width:320px;}
+.room-actions .btn-primary{flex:1;}
+.btn-secondary{
+  flex:1;padding:16px;border-radius:16px;background:var(--glass);border:1px solid var(--border);
+  font-family:var(--font-d);font-weight:700;font-size:13px;color:var(--text-0);
+}
+.btn-secondary:active{background:var(--glass-strong);}
+
+.join-input-wrap{display:flex;gap:10px;width:100%;max-width:300px;}
+#joinCodeInput{
+  flex:1;background:var(--glass);border:1px solid var(--border);border-radius:14px;
+  padding:14px;text-align:center;font-family:var(--font-d);font-size:18px;letter-spacing:3px;
+  text-transform:uppercase;outline:none;
+}
+#joinCodeInput:focus{border-color:var(--purple);}
+
+.opponent-row{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:6px;}
+.opponent-row .o-avatar{width:28px;height:28px;border-radius:50%;background:var(--grad-main);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;}
+.opponent-row .o-name{font-size:12.5px;color:var(--text-1);font-weight:600;}
+.opponent-row .o-vs{font-size:11px;color:var(--text-2);font-weight:700;}
+
+.waiting-pulse{width:64px;height:64px;border-radius:50%;position:relative;display:flex;align-items:center;justify-content:center;}
+.waiting-pulse::before,.waiting-pulse::after{content:'';position:absolute;inset:0;border-radius:50%;border:2px solid var(--purple);animation:pulseRing 1.8s ease-out infinite;}
+.waiting-pulse::after{animation-delay:.6s;}
+@keyframes pulseRing{0%{transform:scale(.6);opacity:1;}100%{transform:scale(1.8);opacity:0;}}
+.waiting-pulse svg{width:26px;height:26px;color:var(--purple);}
+
+.ready-btn{
+  width:100%;max-width:280px;padding:20px;border-radius:20px;
+  background:var(--grad-gold);font-family:var(--font-d);font-weight:800;font-size:15px;
+  color:#1a1206;letter-spacing:.5px;text-transform:uppercase;
+  box-shadow:0 12px 30px -10px rgba(255,209,102,0.6);
+  transition:transform .15s;
+}
+.ready-btn:active{transform:scale(.96);}
+.ready-btn.confirmed{opacity:.55;pointer-events:none;}
+
+.conn-banner{
+  position:fixed;top:calc(10px + var(--safe-top));left:50%;transform:translateX(-50%);
+  padding:8px 16px;border-radius:100px;background:rgba(255,92,122,0.16);border:1px solid rgba(255,92,122,0.35);
+  font-size:11.5px;font-weight:700;color:var(--bad);z-index:400;display:flex;align-items:center;gap:7px;
+}
+.conn-banner .dot{width:6px;height:6px;border-radius:50%;background:var(--bad);animation:blink 1s infinite;}
+@keyframes blink{50%{opacity:.2;}}
+
+.error-box{text-align:center;padding:40px 20px;color:var(--text-1);font-size:13px;}
+.error-box svg{width:40px;height:40px;color:var(--bad);margin-bottom:12px;}
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ===== TOPBAR ===== -->
+  <div class="topbar">
+    <div class="user-chip">
+      <div class="avatar" id="userAvatar">?</div>
+      <div class="user-meta">
+        <div class="u-name" id="userName">Игрок</div>
+        <div class="u-sub" id="userSub">Загрузка...</div>
+      </div>
+    </div>
+    <div class="balance-pill">
+      <svg class="star-ic" viewBox="0 0 24 24" fill="none"><path d="M12 2L14.9 8.6L22 9.4L16.7 14.2L18.2 21.3L12 17.6L5.8 21.3L7.3 14.2L2 9.4L9.1 8.6L12 2Z" fill="url(#starGrad)"/><defs><linearGradient id="starGrad" x1="0" y1="0" x2="24" y2="24"><stop stop-color="#ffe29a"/><stop offset="1" stop-color="#c9932e"/></linearGradient></defs></svg>
+      <span class="bal-num" id="balanceNum">0</span>
+    </div>
+  </div>
+
+  <!-- ===== SCREEN: GAMES ===== -->
+  <div class="screen" id="screen-games">
+    <div class="section-title">Игры на звёзды</div>
+    <div class="game-grid">
+      <div class="glass-card game-card cx-ttt" onclick="openGame('ttt')">
+        <div class="g-icon"><svg viewBox="0 0 24 24" fill="none" stroke="url(#gicon1)" stroke-width="2" stroke-linecap="round"><defs><linearGradient id="gicon1" x1="0" y1="0" x2="24" y2="24"><stop stop-color="#9b5cff"/><stop offset="1" stop-color="#ff4fd8"/></linearGradient></defs><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg></div>
+        <div class="g-info">
+          <div class="g-name">Крестики-Нолики</div>
+          <div class="g-desc">Обыграй бота — победа даёт x2 от ставки</div>
+        </div>
+        <svg class="g-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+
+      <div class="glass-card game-card cx-dice" onclick="openGame('dice')">
+        <div class="g-icon"><svg viewBox="0 0 24 24" fill="none" stroke="url(#gicon2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="gicon2" x1="0" y1="0" x2="24" y2="24"><stop stop-color="#ff4fd8"/><stop offset="1" stop-color="#9b5cff"/></linearGradient></defs><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8" cy="8" r="1" fill="url(#gicon2)"/><circle cx="16" cy="8" r="1" fill="url(#gicon2)"/><circle cx="12" cy="12" r="1" fill="url(#gicon2)"/><circle cx="8" cy="16" r="1" fill="url(#gicon2)"/><circle cx="16" cy="16" r="1" fill="url(#gicon2)"/></svg></div>
+        <div class="g-info">
+          <div class="g-name">Кубики</div>
+          <div class="g-desc">3 кубика против бота — больше сумма выигрывает</div>
+        </div>
+        <svg class="g-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+
+      <div class="glass-card game-card cx-cups" onclick="openGame('cups')">
+        <div class="g-icon"><svg viewBox="0 0 24 24" fill="none" stroke="url(#gicon3)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="gicon3" x1="0" y1="0" x2="24" y2="24"><stop stop-color="#ffd166"/><stop offset="1" stop-color="#ff4fd8"/></linearGradient></defs><path d="M5 8h14l-1.5 11a2 2 0 01-2 1.8H8.5a2 2 0 01-2-1.8L5 8z"/><path d="M3 8h18"/><path d="M9 8V5a3 3 0 016 0v3"/></svg></div>
+        <div class="g-info">
+          <div class="g-name">Найди шарик</div>
+          <div class="g-desc">Угадай стакан с шариком — выигрыш x1.5</div>
+        </div>
+        <svg class="g-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SCREEN: LEADERBOARD ===== -->
+  <div class="screen" id="screen-leaderboard" hidden>
+    <div class="section-title">Рейтинг игроков</div>
+    <div id="lbContent"><div class="center-pad"><div class="spinner"></div>Загрузка рейтинга…</div></div>
+  </div>
+
+  <!-- ===== SCREEN: GUIDE ===== -->
+  <div class="screen" id="screen-guide" hidden>
+    <div class="section-title">Как играть</div>
+
+    <div class="glass-card guide-card" style="animation-delay:.02s">
+      <div class="guide-head">
+        <div class="g-icon"><svg viewBox="0 0 24 24" fill="none" stroke="url(#gicon1)" stroke-width="2" stroke-linecap="round"><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg></div>
+        <h3>Крестики-Нолики</h3>
+      </div>
+      <p>Сделай ставку и сыграй против бота на поле 3×3. Ты ходишь крестиком, бот — ноликом. Если удастся победить — получаешь x2 от ставки. Ничья возвращает ставку обратно. Бот играет очень сильно, но иногда ошибается — лови момент.</p>
+      <span class="g-tag tag-win">Победа: x2</span>
+    </div>
+
+    <div class="glass-card guide-card" style="animation-delay:.12s">
+      <div class="guide-head">
+        <div class="g-icon"><svg viewBox="0 0 24 24" fill="none" stroke="url(#gicon2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8" cy="8" r="1" fill="url(#gicon2)"/><circle cx="16" cy="16" r="1" fill="url(#gicon2)"/><circle cx="12" cy="12" r="1" fill="url(#gicon2)"/></svg></div>
+        <h3>Кубики</h3>
+      </div>
+      <p>Ты и бот бросаете по 3 кубика. Побеждает тот, у кого сумма очков больше. При равной сумме — ставка возвращается. Всё решает удача момента.</p>
+      <span class="g-tag tag-win">Победа: x2</span>
+    </div>
+
+    <div class="glass-card guide-card" style="animation-delay:.22s">
+      <div class="guide-head">
+        <div class="g-icon"><svg viewBox="0 0 24 24" fill="none" stroke="url(#gicon3)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h14l-1.5 11a2 2 0 01-2 1.8H8.5a2 2 0 01-2-1.8L5 8z"/><path d="M3 8h18"/><path d="M9 8V5a3 3 0 016 0v3"/></svg></div>
+        <h3>Найди шарик</h3>
+      </div>
+      <p>Шарик прячется под одним из трёх стаканов, после чего они быстро перемешиваются. Угадай, под каким стаканом шарик — и забери x1.5 от ставки.</p>
+      <span class="g-tag tag-win">Победа: x1.5</span>
+    </div>
+
+  </div>
+
+  <!-- ===== SCREEN: PROFILE ===== -->
+  <div class="screen" id="screen-profile" hidden>
+    <div class="profile-head">
+      <div class="avatar" id="profAvatar">?</div>
+      <div class="p-name" id="profName">Игрок</div>
+      <div class="p-id" id="profId">ID: —</div>
+    </div>
+
+    <div class="stat-grid">
+      <div class="glass-card stat-card"><div class="s-val" id="statGames">0</div><div class="s-lbl">Всего игр</div></div>
+      <div class="glass-card stat-card"><div class="s-val gold" id="statStaked">0</div><div class="s-lbl">Поставлено ⭐</div></div>
+      <div class="glass-card stat-card"><div class="s-val" id="statWins">0</div><div class="s-lbl">Побед</div></div>
+      <div class="glass-card stat-card"><div class="s-val" id="statLosses">0</div><div class="s-lbl">Поражений</div></div>
+    </div>
+
+    <div class="section-title">По играм</div>
+    <div id="breakdownList"></div>
+  </div>
+
+  <!-- ===== TABBAR ===== -->
+  <nav class="tabbar">
+    <button class="tab-btn active" data-tab="games" onclick="switchTab('games')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+      <span>Игры</span>
+    </button>
+    <button class="tab-btn" data-tab="leaderboard" onclick="switchTab('leaderboard')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 01-10 0V4z"/><path d="M7 6H4a2 2 0 002 4M17 6h3a2 2 0 01-2 4"/></svg>
+      <span>Рейтинг</span>
+    </button>
+    <button class="tab-btn" data-tab="guide" onclick="switchTab('guide')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 016.5 3H20v15.5a1 1 0 01-1 1H6.5A2.5 2.5 0 004 22"/><path d="M4 5.5v13A2.5 2.5 0 006.5 21H19"/></svg>
+      <span>Гайд</span>
+    </button>
+    <button class="tab-btn" data-tab="profile" onclick="switchTab('profile')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6.5 8-6.5s8 2.5 8 6.5"/></svg>
+      <span>Профиль</span>
+    </button>
+  </nav>
+</div>
+
+<!-- ===== GAME OVERLAY: TTT (PvP через комнаты) ===== -->
+<div class="overlay" id="overlay-ttt">
+  <div class="ov-head">
+    <button class="ov-back" onclick="closeGame('ttt')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <div class="ov-title">Крестики-Нолики</div>
+    <div class="ov-bal"><svg viewBox="0 0 24 24" fill="url(#starGrad)"><path d="M12 2L14.9 8.6L22 9.4L16.7 14.2L18.2 21.3L12 17.6L5.8 21.3L7.3 14.2L2 9.4L9.1 8.6L12 2Z"/></svg><span id="ovBalTtt">0</span></div>
+  </div>
+  <div class="ov-body">
+
+    <div id="tttModeStage" class="mode-select">
+      <button class="mode-btn" onclick="openCreateStage('ttt')">
+        <div class="m-icon"><svg viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></div>
+        <div><div class="m-title">Создать комнату</div><div class="m-sub">Пригласите друга по ссылке</div></div>
+      </button>
+      <button class="mode-btn" onclick="openJoinStage('ttt')">
+        <div class="m-icon"><svg viewBox="0 0 24 24" fill="none" stroke="var(--pink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg></div>
+        <div><div class="m-title">У меня есть код</div><div class="m-sub">Введите код комнаты друга</div></div>
+      </button>
+    </div>
+
+    <div id="tttCreateStage" class="hidden bet-panel">
+      <div class="bp-label">Ваша ставка</div>
+      <div class="bet-input-wrap">
+        <button class="bet-step" onclick="stepBet('ttt',-5)">−</button>
+        <input id="tttBet" type="number" value="10" min="1">
+        <button class="bet-step" onclick="stepBet('ttt',5)">+</button>
+      </div>
+      <div class="bet-quick">
+        <button onclick="setBet('ttt',10)">10</button>
+        <button onclick="setBet('ttt',25)">25</button>
+        <button onclick="setBet('ttt',50)">50</button>
+        <button onclick="setBet('ttt',100)">100</button>
+      </div>
+      <button class="btn-primary" onclick="createRoom('ttt')">Создать комнату</button>
+      <button class="btn-ghost" onclick="showStage('ttt','Mode')">Назад</button>
+    </div>
+
+    <div id="tttJoinStage" class="hidden bet-panel">
+      <div class="bp-label">Код комнаты друга</div>
+      <div class="join-input-wrap" style="margin-bottom:18px;">
+        <input id="joinCodeInput-ttt" maxlength="6" placeholder="ABC123">
+      </div>
+      <button class="btn-primary" onclick="joinRoom('ttt')">Войти в комнату</button>
+      <button class="btn-ghost" onclick="showStage('ttt','Mode')">Назад</button>
+    </div>
+
+    <div id="tttWaitStage" class="hidden" style="width:100%;display:flex;flex-direction:column;align-items:center;gap:20px;">
+      <div class="waiting-pulse"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6.5 8-6.5s8 2.5 8 6.5"/></svg></div>
+      <div class="room-code-box">
+        <div class="rc-label">Код комнаты</div>
+        <div class="rc-code" id="tttRoomCode">——————</div>
+      </div>
+      <div class="cups-status">Ждём соперника…</div>
+      <div class="room-actions">
+        <button class="btn-secondary" onclick="copyInvite('ttt')">Копировать ссылку</button>
+        <button class="btn-primary" onclick="shareInvite('ttt')">Поделиться</button>
+      </div>
+      <button class="btn-ghost" style="max-width:300px;" onclick="cancelRoom('ttt')">Отменить</button>
+    </div>
+
+    <div id="tttPlayStage" class="hidden" style="width:100%;display:flex;flex-direction:column;align-items:center;gap:16px;">
+      <div class="opponent-row"><div class="o-avatar" id="tttOppAv">?</div><div class="o-name" id="tttOppName">Соперник</div></div>
+      <div class="ttt-status" id="tttStatus">Ваш ход</div>
+      <div class="ttt-board" id="tttBoard"></div>
+    </div>
+
+    <div id="tttResultStage" class="hidden result-panel"></div>
+    <div id="tttErrorStage" class="hidden error-box"></div>
+  </div>
+</div>
+<!-- ===== GAME OVERLAY: DICE (PvP через комнаты) ===== -->
+<div class="overlay" id="overlay-dice">
+  <div class="ov-head">
+    <button class="ov-back" onclick="closeGame('dice')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <div class="ov-title">Кубики</div>
+    <div class="ov-bal"><svg viewBox="0 0 24 24" fill="url(#starGrad)"><path d="M12 2L14.9 8.6L22 9.4L16.7 14.2L18.2 21.3L12 17.6L5.8 21.3L7.3 14.2L2 9.4L9.1 8.6L12 2Z"/></svg><span id="ovBalDice">0</span></div>
+  </div>
+  <div class="ov-body">
+
+    <div id="diceModeStage" class="mode-select">
+      <button class="mode-btn" onclick="openCreateStage('dice')">
+        <div class="m-icon"><svg viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></div>
+        <div><div class="m-title">Создать комнату</div><div class="m-sub">Пригласите друга по ссылке</div></div>
+      </button>
+      <button class="mode-btn" onclick="openJoinStage('dice')">
+        <div class="m-icon"><svg viewBox="0 0 24 24" fill="none" stroke="var(--pink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg></div>
+        <div><div class="m-title">У меня есть код</div><div class="m-sub">Введите код комнаты друга</div></div>
+      </button>
+    </div>
+
+    <div id="diceCreateStage" class="hidden bet-panel">
+      <div class="bp-label">Ваша ставка</div>
+      <div class="bet-input-wrap">
+        <button class="bet-step" onclick="stepBet('dice',-5)">−</button>
+        <input id="diceBet" type="number" value="10" min="1">
+        <button class="bet-step" onclick="stepBet('dice',5)">+</button>
+      </div>
+      <div class="bet-quick">
+        <button onclick="setBet('dice',10)">10</button>
+        <button onclick="setBet('dice',25)">25</button>
+        <button onclick="setBet('dice',50)">50</button>
+        <button onclick="setBet('dice',100)">100</button>
+      </div>
+      <button class="btn-primary" onclick="createRoom('dice')">Создать комнату</button>
+      <button class="btn-ghost" onclick="showStage('dice','Mode')">Назад</button>
+    </div>
+
+    <div id="diceJoinStage" class="hidden bet-panel">
+      <div class="bp-label">Код комнаты друга</div>
+      <div class="join-input-wrap" style="margin-bottom:18px;">
+        <input id="joinCodeInput-dice" maxlength="6" placeholder="ABC123">
+      </div>
+      <button class="btn-primary" onclick="joinRoom('dice')">Войти в комнату</button>
+      <button class="btn-ghost" onclick="showStage('dice','Mode')">Назад</button>
+    </div>
+
+    <div id="diceWaitStage" class="hidden" style="width:100%;display:flex;flex-direction:column;align-items:center;gap:20px;">
+      <div class="waiting-pulse"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6.5 8-6.5s8 2.5 8 6.5"/></svg></div>
+      <div class="room-code-box">
+        <div class="rc-label">Код комнаты</div>
+        <div class="rc-code" id="diceRoomCode">——————</div>
+      </div>
+      <div class="cups-status">Ждём соперника…</div>
+      <div class="room-actions">
+        <button class="btn-secondary" onclick="copyInvite('dice')">Копировать ссылку</button>
+        <button class="btn-primary" onclick="shareInvite('dice')">Поделиться</button>
+      </div>
+      <button class="btn-ghost" style="max-width:300px;" onclick="cancelRoom('dice')">Отменить</button>
+    </div>
+
+    <div id="diceReadyStage" class="hidden" style="width:100%;display:flex;flex-direction:column;align-items:center;gap:18px;">
+      <div class="opponent-row"><div class="o-avatar" id="diceOppAv">?</div><div class="o-name" id="diceOppName">Соперник</div></div>
+      <div class="cups-status">Оба готовы — бросаем кубики</div>
+      <button class="ready-btn" id="diceReadyBtn" onclick="sendDiceReady()">Готов бросать</button>
+    </div>
+
+    <div id="diceArenaStage" class="hidden dice-arena">
+      <div class="dice-side">
+        <div class="dice-side-label">Вы</div>
+        <div class="dice-row" id="diceRowPlayer"></div>
+      </div>
+      <div class="dice-vs">VS</div>
+      <div class="dice-side">
+        <div class="dice-side-label" id="diceOppLabel">Соперник</div>
+        <div class="dice-row" id="diceRowBot"></div>
+      </div>
+    </div>
+
+    <div id="diceResultStage" class="hidden result-panel"></div>
+    <div id="diceErrorStage" class="hidden error-box"></div>
+  </div>
+</div>
+<!-- ===== GAME OVERLAY: CUPS (честная серверная игра) ===== -->
+<div class="overlay" id="overlay-cups">
+  <div class="ov-head">
+    <button class="ov-back" onclick="closeGame('cups')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <div class="ov-title">Найди шарик</div>
+    <div class="ov-bal"><svg viewBox="0 0 24 24" fill="url(#starGrad)"><path d="M12 2L14.9 8.6L22 9.4L16.7 14.2L18.2 21.3L12 17.6L5.8 21.3L7.3 14.2L2 9.4L9.1 8.6L12 2Z"/></svg><span id="ovBalCups">0</span></div>
+  </div>
+  <div class="ov-body">
+    <div id="cupsBetStage" class="bet-panel">
+      <div class="bp-label">Ваша ставка</div>
+      <div class="bet-input-wrap">
+        <button class="bet-step" onclick="stepBet('cups',-5)">−</button>
+        <input id="cupsBet" type="number" value="10" min="1">
+        <button class="bet-step" onclick="stepBet('cups',5)">+</button>
+      </div>
+      <div class="bet-quick">
+        <button onclick="setBet('cups',10)">10</button>
+        <button onclick="setBet('cups',25)">25</button>
+        <button onclick="setBet('cups',50)">50</button>
+        <button onclick="setBet('cups',100)">100</button>
+      </div>
+      <button class="btn-primary" onclick="startCups()">Выбрать стакан</button>
+    </div>
+
+    <div id="cupsArenaStage" class="hidden" style="width:100%;display:flex;flex-direction:column;align-items:center;gap:22px;">
+      <div class="cups-status" id="cupsStatus">Выберите стакан</div>
+      <div class="cups-arena" id="cupsArena"></div>
+    </div>
+
+    <div id="cupsResultStage" class="hidden result-panel"></div>
+    <div id="cupsErrorStage" class="hidden error-box"></div>
+  </div>
+</div>
+<!-- ===== MODAL: insufficient funds ===== -->
+<div class="modal-backdrop" id="modalInsufficient">
+  <div class="modal-box">
+    <div class="modal-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg></div>
+    <h3>Недостаточно звёзд</h3>
+    <p>У вас не хватает звёзд для этой ставки. Пригласите друзей, выполните задания или активируйте промокод в боте, чтобы пополнить баланс.</p>
+    <button class="btn-primary" onclick="closeModal('modalInsufficient')">Понятно</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   XalyavaStars WebApp — реальный онлайн-бэкенд, без демо-режима
+   ============================================================ */
+
+// TODO: вставьте сюда ваш HTTPS-адрес от ngrok (или домена с SSL), например:
+// const API_URL = 'https://abcd-12-34-56-78.ngrok-free.app';
+const API_URL = 'https://YOUR-NGROK-URL.ngrok-free.app';
+const WS_URL = API_URL.replace(/^http/, 'ws');
+
+const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+if (tg) { tg.ready(); tg.expand(); try{tg.setHeaderColor('#07050d');tg.setBackgroundColor('#07050d');}catch(e){} }
+
+const tgUser = tg && tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user : null;
+
+let state = {
+  user: {
+    id: tgUser ? tgUser.id : 0,
+    first_name: tgUser ? tgUser.first_name : 'Гость',
+    username: tgUser ? tgUser.username : null,
+    photo_url: tgUser ? tgUser.photo_url : null,
+    balance: 0
+  },
+  leaderboard: [],
+  stats: null,
+  connected: false
+};
+
+// комнаты по каждой PvP-игре
+let roomState = {
+  ttt:  { roomId: null, ws: null, isCreator: false, opponent: null, symbol: null, turn: null, board: null, inviteLink: null, bet: 0 },
+  dice: { roomId: null, ws: null, isCreator: false, opponent: null, inviteLink: null, bet: 0 }
+};
+
+/* ---------------- API layer (реальные запросы, без подстановки фейковых данных) ---------------- */
+async function apiPost(path, body){
+  const res = await fetch(API_URL + path, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(body)
+  });
+  const json = await res.json().catch(()=>({}));
+  if(!res.ok) throw Object.assign(new Error(json.error || ('HTTP '+res.status)), {code: json.error});
+  return json;
+}
+async function apiGet(path){
+  const res = await fetch(API_URL + path);
+  const json = await res.json().catch(()=>({}));
+  if(!res.ok) throw Object.assign(new Error(json.error || ('HTTP '+res.status)), {code: json.error});
+  return json;
+}
+
+function showConnBanner(show){
+  let el = document.getElementById('connBanner');
+  if(show){
+    if(!el){
+      el = document.createElement('div');
+      el.id = 'connBanner';
+      el.className = 'conn-banner';
+      el.innerHTML = '<span class="dot"></span> Нет связи с сервером';
+      document.body.appendChild(el);
+    }
+  } else if(el){ el.remove(); }
+}
+
+async function loadUser(){
+  try{
+    const data = await apiPost('/api/user', { userId: state.user.id });
+    state.user.balance = data.balance ?? 0;
+    if (data.username) state.user.username = data.username;
+    if (data.firstName) state.user.first_name = data.firstName;
+    state.connected = true;
+    showConnBanner(false);
+  }catch(e){
+    state.connected = false;
+    showConnBanner(true);
+    showToast('Не удалось подключиться к серверу');
+  }
+  renderUserHeader();
+}
+
+async function loadLeaderboard(){
+  const target = document.getElementById('lbContent');
+  target.innerHTML = '<div class="center-pad"><div class="spinner"></div>Загрузка рейтинга…</div>';
+  try{
+    const data = await apiGet('/api/leaderboard');
+    state.leaderboard = Array.isArray(data) ? data : [];
+    renderLeaderboard();
+  }catch(e){
+    target.innerHTML = '<div class="error-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg><div>Не удалось загрузить рейтинг</div></div>';
+  }
+}
+
+async function loadStats(){
+  try{
+    const data = await apiGet('/api/stats/' + state.user.id);
+    state.stats = data;
+    renderProfile();
+  }catch(e){
+    document.getElementById('breakdownList').innerHTML = '<div class="error-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg><div>Не удалось загрузить статистику</div></div>';
+  }
+}
+
+/* ---------- render: header ---------- */
+function initials(name){ return (name||'?').trim().slice(0,1).toUpperCase(); }
+
+function renderUserHeader(){
+  const av = document.getElementById('userAvatar');
+  if(state.user.photo_url){ av.innerHTML = `<img src="${state.user.photo_url}" alt="">`; }
+  else { av.textContent = initials(state.user.first_name); }
+  document.getElementById('userName').textContent = state.user.first_name || 'Игрок';
+  document.getElementById('userSub').textContent = state.user.username ? '@'+state.user.username : 'ID '+state.user.id;
+  document.getElementById('balanceNum').textContent = Math.round(state.user.balance);
+  ['ovBalTtt','ovBalDice','ovBalCups'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.textContent = Math.round(state.user.balance);
+  });
+
+  const pav = document.getElementById('profAvatar');
+  if(state.user.photo_url){ pav.innerHTML = `<img src="${state.user.photo_url}" alt="">`; }
+  else { pav.textContent = initials(state.user.first_name); }
+  document.getElementById('profName').textContent = state.user.first_name || 'Игрок';
+  document.getElementById('profId').textContent = 'ID: ' + state.user.id;
+}
+
+function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+
+/* ---------- render: leaderboard ---------- */
+function renderLeaderboard(){
+  const list = [...state.leaderboard].sort((a,b)=> (b.profit||0)-(a.profit||0));
+  const top3 = list.slice(0,3);
+  const rest = list.slice(3,20);
+  const order = [1,0,2];
+  let podiumHtml = '<div class="podium">';
+  order.forEach(i=>{
+    const p = top3[i];
+    if(!p){ podiumHtml+='<div class="podium-item"></div>'; return; }
+    const rank = i+1;
+    podiumHtml += `
+      <div class="podium-item rank-${rank}">
+        ${rank===1?'<div style="position:relative;width:100%;display:flex;justify-content:center;"><svg class="p-crown" viewBox="0 0 24 24" fill="currentColor"><path d="M3 8l4 3 5-6 5 6 4-3-2 11H5L3 8z"/></svg></div>':''}
+        <div class="p-avatar">${initials(p.username)}</div>
+        <div class="p-name">${escapeHtml(p.username||'Игрок')}</div>
+        <div class="p-profit">+${Math.round(p.profit||0)}⭐</div>
+        <div class="p-bar">${rank}</div>
+      </div>`;
+  });
+  podiumHtml += '</div>';
+
+  let rowsHtml = '<div class="lb-list">';
+  rest.forEach((p,idx)=>{
+    rowsHtml += `
+      <div class="lb-row">
+        <div class="lb-rank">${idx+4}</div>
+        <div class="lb-av">${initials(p.username)}</div>
+        <div class="lb-name">${escapeHtml(p.username||'Игрок')}</div>
+        <div class="lb-wins">${p.wins||0} побед</div>
+        <div class="lb-profit">+${Math.round(p.profit||0)}⭐</div>
+      </div>`;
+  });
+  rowsHtml += '</div>';
+
+  document.getElementById('lbContent').innerHTML = list.length ? (podiumHtml + rowsHtml) : '<div class="center-pad">Пока никто не сыграл ни одной игры</div>';
+}
+
+/* ---------- render: profile ---------- */
+const gameLabels = { ttt:'Крестики-Нолики', dice:'Кубики', cups:'Найди шарик' };
+const gameIcons = {
+  ttt: '<svg viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="2" stroke-linecap="round"><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg>',
+  dice:'<svg viewBox="0 0 24 24" fill="none" stroke="var(--pink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8" cy="8" r="1" fill="var(--pink)"/><circle cx="16" cy="16" r="1" fill="var(--pink)"/><circle cx="12" cy="12" r="1" fill="var(--pink)"/></svg>',
+  cups:'<svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h14l-1.5 11a2 2 0 01-2 1.8H8.5a2 2 0 01-2-1.8L5 8z"/><path d="M3 8h18"/><path d="M9 8V5a3 3 0 016 0v3"/></svg>'
+};
+
+function renderProfile(){
+  const s = state.stats;
+  if(!s) return;
+  document.getElementById('statGames').textContent = s.totalGames ?? 0;
+  document.getElementById('statStaked').textContent = Math.round(s.totalStaked ?? 0);
+  document.getElementById('statWins').textContent = s.wins ?? 0;
+  document.getElementById('statLosses').textContent = s.losses ?? 0;
+
+  const bd = s.byGame || {};
+  let html = '';
+  Object.keys(gameLabels).forEach(key=>{
+    const g = bd[key] || {games:0,wins:0,losses:0};
+    html += `
+      <div class="breakdown-row">
+        <div class="b-icon">${gameIcons[key]}</div>
+        <div class="b-name">${gameLabels[key]}</div>
+        <div class="b-stats">
+          <div class="b-line"><b>${g.games||0}</b> игр</div>
+          <div class="b-line">${g.wins||0}W / ${g.losses||0}L</div>
+        </div>
+      </div>`;
+  });
+  document.getElementById('breakdownList').innerHTML = html;
+}
+
+/* ---------- tabs ---------- */
+function switchTab(name){
+  ['games','leaderboard','guide','profile'].forEach(t=>{
+    document.getElementById('screen-'+t).hidden = t!==name;
+  });
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===name));
+  if(tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+  if(name==='leaderboard') loadLeaderboard();
+  if(name==='profile') loadStats();
+}
+
+/* ---------- toast / modal ---------- */
+let toastTimer=null;
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 2600);
+}
+function openModal(id){ document.getElementById(id).classList.add('open'); if(tg&&tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('warning'); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+
+/* ---------- bet controls ---------- */
+function stepBet(game, delta){
+  const inp = document.getElementById(game+'Bet');
+  let v = parseInt(inp.value||'0',10) + delta;
+  if(v<1) v=1;
+  inp.value = v;
+}
+function setBet(game, val){ document.getElementById(game+'Bet').value = val; }
+function getBet(game){
+  const inp = document.getElementById(game+'Bet');
+  let v = parseInt(inp.value||'0',10);
+  if(isNaN(v) || v<1) v=1;
+  return v;
+}
+function canAffordBet(bet){
+  if(bet > state.user.balance){ openModal('modalInsufficient'); return false; }
+  return true;
+}
+
+/* ============================================================
+   Overlay / stage management (общее для ttt и dice)
+   ============================================================ */
+const PVP_STAGES = ['Mode','Create','Join','Wait','Play','Ready','Arena','Result','Error'];
+
+function showStage(game, stageName){
+  PVP_STAGES.forEach(s=>{
+    const el = document.getElementById(game+s+'Stage');
+    if(el) el.classList.toggle('hidden', s!==stageName);
+  });
+}
+
+function openGame(game){
+  document.getElementById('overlay-'+game).classList.add('open');
+  if(tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+  if(game==='cups'){
+    document.getElementById('cupsBetStage').classList.remove('hidden');
+    document.getElementById('cupsArenaStage').classList.add('hidden');
+    document.getElementById('cupsResultStage').classList.add('hidden');
+    document.getElementById('cupsErrorStage').classList.add('hidden');
+  } else {
+    showStage(game, 'Mode');
+  }
+}
+
+function closeGame(game){
+  document.getElementById('overlay-'+game).classList.remove('open');
+  const rs = roomState[game];
+  if(rs && rs.ws){ try{ rs.ws.close(); }catch(e){} rs.ws=null; }
+}
+
+function openCreateStage(game){ showStage(game,'Create'); }
+function openJoinStage(game){ showStage(game,'Join'); }
+
+function showRoomError(game, message){
+  showStage(game, 'Error');
+  document.getElementById(game+'ErrorStage').innerHTML = `
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+    <div>${message}</div>
+    <button class="btn-primary" style="margin-top:16px;max-width:220px;" onclick="showStage('${game}','Mode')">Назад</button>
+  `;
+}
+
+const ERROR_MESSAGES = {
+  insufficient_balance: 'Недостаточно звёзд для этой ставки',
+  room_not_found: 'Комната не найдена или уже занята',
+  cannot_join_own_room: 'Нельзя присоединиться к своей же комнате',
+  user_not_found: 'Профиль не найден, откройте бота через /start'
+};
+function friendlyError(e){
+  return ERROR_MESSAGES[e.code] || 'Не удалось подключиться к серверу';
+}
+
+/* ---------- создание / вход в комнату ---------- */
+async function createRoom(game){
+  const bet = getBet(game);
+  if(!canAffordBet(bet)) return;
+  try{
+    const data = await apiPost('/api/room/create', { userId: state.user.id, bet, game });
+    state.user.balance -= bet; renderUserHeader();
+    const rs = roomState[game];
+    rs.roomId = data.roomId; rs.isCreator = true; rs.bet = bet; rs.inviteLink = data.inviteLink;
+    document.getElementById(game+'RoomCode').textContent = data.roomId;
+    showStage(game, 'Wait');
+    connectRoomWS(game, data.roomId);
+  }catch(e){
+    showToast(friendlyError(e));
+  }
+}
+
+async function joinRoomWithCode(game, code){
+  try{
+    const data = await apiPost('/api/room/join', { userId: state.user.id, roomId: code });
+    state.user.balance -= data.bet; renderUserHeader();
+    const rs = roomState[game];
+    rs.roomId = data.roomId; rs.isCreator = false; rs.bet = data.bet;
+    showStage(game, 'Wait');
+    document.getElementById(game+'RoomCode').textContent = data.roomId;
+    document.querySelector(`#${game}WaitStage .cups-status`).textContent = 'Подключаемся…';
+    document.querySelector(`#${game}WaitStage .room-actions`).style.display = 'none';
+    connectRoomWS(game, data.roomId);
+  }catch(e){
+    showToast(friendlyError(e));
+  }
+}
+function joinRoom(game){
+  const code = document.getElementById('joinCodeInput-'+game).value.trim().toUpperCase();
+  if(code.length < 4){ showToast('Введите код комнаты'); return; }
+  joinRoomWithCode(game, code);
+}
+
+async function cancelRoom(game){
+  const rs = roomState[game];
+  if(!rs.roomId) return;
+  try{ await apiPost('/api/room/cancel', { userId: state.user.id, roomId: rs.roomId }); }catch(e){}
+  if(rs.ws){ try{ rs.ws.close(); }catch(e){} rs.ws=null; }
+  state.user.balance += rs.bet; renderUserHeader();
+  rs.roomId = null;
+  showStage(game, 'Mode');
+}
+
+function copyInvite(game){
+  const link = roomState[game].inviteLink;
+  if(!link) return;
+  navigator.clipboard?.writeText(link).then(()=>showToast('Ссылка скопирована')).catch(()=>showToast(link));
+}
+function shareInvite(game){
+  const link = roomState[game].inviteLink;
+  if(!link) return;
+  const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent('Присоединяйся к игре в XalyavaStars!')}`;
+  if(tg && tg.openTelegramLink){ tg.openTelegramLink(shareUrl); }
+  else { window.open(shareUrl, '_blank'); }
+}
+
+/* ---------- WebSocket ---------- */
+function connectRoomWS(game, roomId){
+  const rs = roomState[game];
+  const ws = new WebSocket(`${WS_URL}/ws/${roomId}?userId=${state.user.id}`);
+  rs.ws = ws;
+
+  ws.onmessage = (evt)=>{
+    let data;
+    try{ data = JSON.parse(evt.data); }catch(e){ return; }
+    handleRoomMessage(game, data);
+  };
+  ws.onerror = ()=>{ showRoomError(game, 'Соединение потеряно'); };
+  ws.onclose = ()=>{
+    const stageVisible = !document.getElementById(game+'ResultStage').classList.contains('hidden');
+    if(!stageVisible){
+      // соединение закрылось раньше времени, не после завершения партии
+    }
+  };
+}
+
+function handleRoomMessage(game, data){
+  if(data.type === 'error'){ showRoomError(game, friendlyError({code:data.message})); return; }
+
+  if(data.type === 'start'){
+    roomState[game].opponent = data.opponent;
+    if(game === 'ttt'){
+      roomState.ttt.symbol = data.yourSymbol;
+      roomState.ttt.turn = data.turn;
+      roomState.ttt.board = Array(9).fill(null);
+      document.getElementById('tttOppAv').textContent = initials(data.opponent && data.opponent.firstName);
+      document.getElementById('tttOppName').textContent = (data.opponent && data.opponent.firstName) || 'Соперник';
+      document.getElementById('tttStatus').textContent = data.turn === data.yourSymbol ? 'Ваш ход' : 'Ход соперника…';
+      renderTTTBoard();
+      showStage('ttt','Play');
+    } else if(game === 'dice'){
+      document.getElementById('diceOppAv').textContent = initials(data.opponent && data.opponent.firstName);
+      document.getElementById('diceOppName').textContent = (data.opponent && data.opponent.firstName) || 'Соперник';
+      document.getElementById('diceOppLabel').textContent = (data.opponent && data.opponent.firstName) || 'Соперник';
+      document.getElementById('diceReadyBtn').classList.remove('confirmed');
+      document.getElementById('diceReadyBtn').textContent = 'Готов бросать';
+      showStage('dice','Ready');
+    }
+    return;
+  }
+
+  if(game==='ttt' && data.type === 'move'){
+    roomState.ttt.board = data.board;
+    roomState.ttt.turn = data.turn;
+    renderTTTBoard();
+    document.getElementById('tttStatus').textContent = data.turn === roomState.ttt.symbol ? 'Ваш ход' : 'Ход соперника…';
+    return;
+  }
+
+  if(game==='dice' && data.type === 'waiting_opponent'){
+    document.getElementById('diceReadyBtn').classList.add('confirmed');
+    document.getElementById('diceReadyBtn').textContent = 'Ожидаем соперника…';
+    return;
+  }
+
+  if(data.type === 'end'){
+    finishRoomGame(game, data);
+    return;
+  }
+}
+
+/* ---------- TTT ---------- */
+function renderTTTBoard(){
+  const rs = roomState.ttt;
+  const el = document.getElementById('tttBoard');
+  el.innerHTML = '';
+  (rs.board || Array(9).fill(null)).forEach((v,i)=>{
+    const cell = document.createElement('div');
+    cell.className = 'ttt-cell';
+    cell.onclick = ()=>sendTTTMove(i);
+    if(v){
+      cell.innerHTML = v==='X'
+        ? '<svg viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>'
+        : '<svg viewBox="0 0 24 24" fill="none" stroke="var(--pink)" stroke-width="2.6"><circle cx="12" cy="12" r="7.5"/></svg>';
+    }
+    el.appendChild(cell);
+  });
+}
+function sendTTTMove(index){
+  const rs = roomState.ttt;
+  if(!rs.ws || rs.ws.readyState !== 1) return;
+  if(rs.turn !== rs.symbol) return;
+  if(rs.board[index]) return;
+  rs.ws.send(JSON.stringify({type:'move', index}));
+}
+
+/* ---------- DICE ---------- */
+const PIP_LAYOUTS = { 1:[4], 2:[0,8], 3:[0,4,8], 4:[0,2,6,8], 5:[0,2,4,6,8], 6:[0,2,3,5,6,8] };
+function buildDie(cls){
+  const die = document.createElement('div');
+  die.className = 'die '+cls;
+  for(let i=0;i<9;i++){ const p=document.createElement('div'); p.className='pip'; die.appendChild(p); }
+  return die;
+}
+function setDieFace(die, val){
+  const pips = die.querySelectorAll('.pip');
+  pips.forEach(p=>p.classList.remove('on'));
+  (PIP_LAYOUTS[val]||[]).forEach(idx=>pips[idx].classList.add('on'));
+}
+function sendDiceReady(){
+  const rs = roomState.dice;
+  if(!rs.ws || rs.ws.readyState !== 1) return;
+  document.getElementById('diceReadyBtn').classList.add('confirmed');
+  document.getElementById('diceReadyBtn').textContent = 'Ожидаем соперника…';
+  rs.ws.send(JSON.stringify({type:'roll_ready'}));
+}
+function playDiceAnimation(rollsMe, rollsOpp, callback){
+  showStage('dice','Arena');
+  const rowP = document.getElementById('diceRowPlayer');
+  const rowB = document.getElementById('diceRowBot');
+  rowP.innerHTML=''; rowB.innerHTML='';
+  const diceP=[], diceB=[];
+  for(let i=0;i<3;i++){ const d=buildDie('player'); d.classList.add('rolling'); rowP.appendChild(d); diceP.push(d); }
+  for(let i=0;i<3;i++){ const d=buildDie('bot'); d.classList.add('rolling'); rowB.appendChild(d); diceB.push(d); }
+  setTimeout(()=>{
+    diceP.forEach((d,i)=>{ d.classList.remove('rolling'); setDieFace(d, rollsMe[i]); });
+    diceB.forEach((d,i)=>{ d.classList.remove('rolling'); setDieFace(d, rollsOpp[i]); });
+    setTimeout(callback, 700);
+  }, 900);
+}
+
+/* ---------- завершение партии (общее) ---------- */
+function finishRoomGame(game, data){
+  state.user.balance = data.balance;
+  const rs = roomState[game];
+  const iAmCreator = rs.isCreator;
+  const youWon = data.winnerId ? data.winnerId === state.user.id : null;
+
+  function render(){
+    renderUserHeader();
+    let type, title, sub, amount = null;
+    if(data.result === 'opponent_left'){
+      type='win'; title='Победа!'; sub='Соперник покинул игру'; amount = rs.bet;
+    } else if(youWon === null){
+      type='draw'; title='Ничья'; sub='Ставка возвращена'; amount = 0;
+    } else if(youWon){
+      type='win'; title='Победа!'; sub='Вы забрали банк'; amount = rs.bet;
+    } else {
+      type='lose'; title='Поражение'; sub='В этот раз не повезло'; amount = -rs.bet;
+    }
+    const iconMap = {
+      win:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>',
+      lose:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>',
+      draw:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg>'
+    };
+    const panel = document.getElementById(game+'ResultStage');
+    panel.innerHTML = `
+      <div class="result-icon ${type}">${iconMap[type]}</div>
+      <div class="result-title">${title}</div>
+      <div class="result-sub">${sub}</div>
+      ${amount!=null ? `<div class="result-amount ${amount>=0?'pos':'neg'}">${amount>=0?'+':''}${amount}⭐</div>` : ''}
+      <button class="btn-primary" onclick="showStage('${game}','Mode')">Играть снова</button>
+      <button class="btn-ghost" onclick="closeGame('${game}')">Выйти</button>
+    `;
+    showStage(game, 'Result');
+    if(tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred(type==='win'?'success':type==='lose'?'error':'warning');
+  }
+
+  if(game==='dice' && data.rollsCreator){
+    const rollsMe = iAmCreator ? data.rollsCreator : data.rollsJoiner;
+    const rollsOpp = iAmCreator ? data.rollsJoiner : data.rollsCreator;
+    playDiceAnimation(rollsMe, rollsOpp, render);
+  } else {
+    render();
+  }
+
+  if(rs.ws){ try{ rs.ws.close(); }catch(e){} rs.ws=null; }
+  rs.roomId = null;
+}
+
+/* ============================================================
+   CUPS — честная серверная игра (не PvP, но не демо: реальный RNG на сервере)
+   ============================================================ */
+const CUP_SVG = `<svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">
+  <defs><linearGradient id="cupGrad" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="#c98cff"/><stop offset="100%" stop-color="#6b3fd4"/>
+  </linearGradient></defs>
+  <path d="M8 14h44l-6 40a4 4 0 01-4 3.4H18a4 4 0 01-4-3.4L8 14z" fill="url(#cupGrad)" stroke="rgba(255,255,255,0.25)" stroke-width="1"/>
+  <ellipse cx="30" cy="14" rx="22" ry="5" fill="#e0c3ff"/>
+</svg>`;
+
+function startCups(){
+  const bet = getBet('cups');
+  if(!canAffordBet(bet)) return;
+  document.getElementById('cupsBetStage').classList.add('hidden');
+  document.getElementById('cupsArenaStage').classList.remove('hidden');
+  document.getElementById('cupsStatus').textContent = 'Перемешиваем…';
+
+  const arena = document.getElementById('cupsArena');
+  arena.innerHTML='';
+  const cups=[];
+  for(let i=0;i<3;i++){
+    const c = document.createElement('div');
+    c.className='cup';
+    c.innerHTML = CUP_SVG + `<div class="ball"></div>`;
+    arena.appendChild(c);
+    cups.push(c);
+  }
+  cosmeticShuffle(cups, ()=>{
+    document.getElementById('cupsStatus').textContent = 'Выберите стакан';
+    cups.forEach((c,idx)=> c.onclick = ()=>pickCup(idx, bet, cups));
+  });
+}
+
+function cosmeticShuffle(cups, done){
+  // визуальное перемешивание — реальный результат определяется на сервере в момент выбора
+  const rects = cups.map(c=>c.getBoundingClientRect());
+  const gap = rects[1] ? rects[1].left - rects[0].left : 100;
+  let i=0;
+  const swaps = 9 + Math.floor(Math.random()*4);
+  function step(){
+    if(i>=swaps){ done(); return; }
+    let a = Math.floor(Math.random()*3), b = Math.floor(Math.random()*3);
+    while(b===a) b = Math.floor(Math.random()*3);
+    const dxA = (b-a)*gap, dxB = (a-b)*gap;
+    cups[a].style.transition = 'transform .28s cubic-bezier(.4,.2,.2,1)';
+    cups[b].style.transition = 'transform .28s cubic-bezier(.4,.2,.2,1)';
+    setTranslate(cups[a], getTranslate(cups[a]) + dxA);
+    setTranslate(cups[b], getTranslate(cups[b]) + dxB);
+    const tmp = cups[a]; cups[a]=cups[b]; cups[b]=tmp;
+    i++;
+    setTimeout(step, 190);
+  }
+  step();
+}
+function getTranslate(el){ const m = el.style.transform.match(/translateX\(([-0-9.]+)px\)/); return m ? parseFloat(m[1]) : 0; }
+function setTranslate(el, x){ el.style.transform = `translateX(${x}px)`; }
+
+async function pickCup(chosenIndex, bet, cups){
+  cups.forEach(c=>c.onclick=null);
+  document.getElementById('cupsStatus').textContent = 'Считаем…';
+  try{
+    const data = await apiPost('/api/game/cups', { userId: state.user.id, bet, chosenCup: chosenIndex });
+    state.user.balance = data.balance; renderUserHeader();
+
+    cups[chosenIndex].classList.add('lifted');
+    if(data.won) cups[chosenIndex].classList.add('reveal');
+    else cups[data.ballIndex].classList.add('lifted','reveal');
+
+    document.getElementById('cupsStatus').textContent = data.won ? 'Шарик найден!' : 'Мимо…';
+
+    setTimeout(()=>{
+      const panel = document.getElementById('cupsResultStage');
+      const type = data.won ? 'win' : 'lose';
+      const iconMap = {
+        win:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>',
+        lose:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>'
+      };
+      panel.innerHTML = `
+        <div class="result-icon ${type}">${iconMap[type]}</div>
+        <div class="result-title">${data.won ? 'Угадали!' : 'Не угадали'}</div>
+        <div class="result-sub">${data.won ? 'Шарик был здесь' : 'Попробуйте ещё раз'}</div>
+        <div class="result-amount ${data.won?'pos':'neg'}">${data.won?'+':''}${data.won ? data.payout - bet : -bet}⭐</div>
+        <button class="btn-primary" onclick="openGame('cups')">Играть снова</button>
+        <button class="btn-ghost" onclick="closeGame('cups')">Выйти</button>
+      `;
+      document.getElementById('cupsArenaStage').classList.add('hidden');
+      panel.classList.remove('hidden');
+      if(tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred(data.won?'success':'error');
+    }, 900);
+  }catch(e){
+    showToast(friendlyError(e));
+    document.getElementById('cupsArenaStage').classList.add('hidden');
+    document.getElementById('cupsBetStage').classList.remove('hidden');
+  }
+}
+
+/* ============================================================
+   INIT — включая автоматический вход в комнату по ссылке ?room=CODE
+   ============================================================ */
+async function checkPendingRoomInvite(){
+  const params = new URLSearchParams(location.search);
+  const roomCode = params.get('room');
+  if(!roomCode) return;
+  try{
+    const info = await apiGet('/api/room/' + roomCode.toUpperCase());
+    if(info.status !== 'waiting'){ showToast('Комната уже недоступна'); return; }
+    const game = info.game;
+    if(!['ttt','dice'].includes(game)) return;
+    openGame(game);
+    joinRoomWithCode(game, roomCode.toUpperCase());
+  }catch(e){
+    showToast('Комната не найдена или уже закрыта');
+  }
+}
+
+(async function init(){
+  await loadUser();
+  loadLeaderboard();
+  await checkPendingRoomInvite();
+})();
+</script>
+</body>
+</html>
